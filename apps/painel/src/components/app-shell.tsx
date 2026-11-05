@@ -25,12 +25,13 @@ function UiIcon({name,size=19}:{name:string;size?:number}){
 }
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-const roleName: Record<string,string> = { ADMIN:'Administrador', GESTOR:'Gestor', COLABORADOR:'Colaborador' };
+const roleName: Record<string,string> = { SYSTEM:'Sistema', ADMIN:'Administrador', GESTOR:'Gestor', COLABORADOR:'Colaborador' };
 const sections = [
   { heading:'VISÃO GERAL', links:[['/','Início','home'],['/dashboard/comercial','Dashboard comercial','chart']] },
   { heading:'GESTÃO COMERCIAL', links:[['/relacionamento','Relacionamento','users'],['/relacionamento/kanban','Funil Kanban','kanban'],['/tarefas','Tarefas comerciais','tasks']] },
   { heading:'CONFIGURAÇÕES', links:[['/admin/usuarios','Usuários e acessos','settings']] },
 ];
+const systemSections = [{ heading:'PLATAFORMA', links:[['/system/empresas','Empresas e licenças','settings']] }];
 export function AppShell({user,children}:{user:ShellUser;children:ReactNode}) {
   const route = usePathname();
   const router = useRouter();
@@ -66,9 +67,9 @@ export function AppShell({user,children}:{user:ShellUser;children:ReactNode}) {
   return <div className={'ta-shell'+(compact?' ta-compact':'')+(mobile?' ta-mobile-open':'')}>
     {mobile&&<button className="ta-overlay" aria-label="Fechar menu" onClick={()=>setMobile(false)}/>}
     <aside className="ta-sidebar" aria-label="Menu do sistema">
-      <Link href="/" className="ta-brand"><span className="ta-brand-badge">3A</span><span className="ta-brand-copy"><strong>Terceiro Andar</strong><small>CRM & OPERAÇÕES</small></span></Link>
+      <Link href={user.role==='SYSTEM'?'/system/empresas':'/'} className="ta-brand"><span className="ta-brand-badge">3A</span><span className="ta-brand-copy"><strong>Terceiro Andar</strong><small>CRM & OPERAÇÕES</small></span></Link>
       <div className="ta-menu">
-        {sections.map(group=>{
+        {(user.role==='SYSTEM'?systemSections:sections).map(group=>{
           if(group.heading==='CONFIGURAÇÕES'&&user.role!=='ADMIN')return null;
           return <div className="ta-menu-group" key={group.heading}>
             <p className="ta-group-title">{group.heading}</p>

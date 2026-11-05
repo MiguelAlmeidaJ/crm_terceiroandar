@@ -15,7 +15,7 @@ async function main() {
       console.log('Administrador já existe: não alteramos senha nem papel automaticamente.');
       return;
     }
-    await prisma.user.create({ data: { email, name, role: Role.ADMIN, passwordHash: await hash(password, 12) } });
+    await prisma.user.create({ data: { email, name, role: Role.SYSTEM, passwordHash: await hash(password, 12) } });
     console.log('Administrador inicial criado.');
   } finally {
     await prisma.$disconnect();

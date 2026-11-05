@@ -15,7 +15,7 @@ const modules = [
   { title: 'Funil Kanban', description: 'Acompanhe cada etapa das oportunidades.', href: '/relacionamento/kanban' },
   { title: 'Tarefas comerciais', description: 'Prazos e atividades sob controle.', href: '/tarefas' },
 ];
-const roleNames = { ADMIN: 'Administrador', GESTOR: 'Gestor', COLABORADOR: 'Colaborador' };
+const roleNames = { SYSTEM: 'Sistema', ADMIN: 'Administrador', GESTOR: 'Gestor', COLABORADOR: 'Colaborador' };
 
 export default function Home() {
   const router = useRouter();
@@ -31,6 +31,7 @@ export default function Home() {
         if (!me.ok) { router.replace('/login'); return; }
         const data: { user: User } = await me.json();
         if (!alive) return;
+        if(data.user.role === 'SYSTEM'){router.replace('/system/empresas');return;}
         setUser(data.user);
         const response = await fetch(`${apiUrl}/dashboard/summary`, { credentials: 'include', cache: 'no-store' });
         if (response.ok && alive) setSummary(await response.json());
