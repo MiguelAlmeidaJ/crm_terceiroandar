@@ -7,7 +7,10 @@ import './marketing.css';
 type Status='RASCUNHO'|'PLANEJADA'|'EM_ANDAMENTO'|'PAUSADA'|'CONCLUIDA'|'CANCELADA';
 type Channel='INSTAGRAM'|'FACEBOOK'|'GOOGLE_ADS'|'EMAIL'|'WHATSAPP'|'SITE'|'EVENTO'|'INDICACAO'|'OUTRO';
 type Campaign={id:string;name:string;description:string|null;channel:Channel;status:Status;budget:string|null;spent:string;startDate:string|null;endDate:string|null;_count:{contacts:number}};
-type Detail=Campaign&{contacts:{id:string;contact:{id:string;name:string;email:string|null}}[]};
+type Metrics={linkedContacts:number;opportunities:number;won:number;lost:number;open:number;costPerLinkedContact:string|null;costPerOpportunity:string|null;costPerWon:string|null;opportunityWinRate:number|null;opportunityConversionRate:number|null;contactToOpportunityRate:number|null;wonOpportunityValue:string;note:string};
+type Detail=Campaign&{contacts:{id:string;contact:{id:string;name:string;email:string|null}}[];opportunities:{id:string;title:string;stage:string;value:string|null;contact:{name:string}}[];metrics:Metrics};
+type ChannelRow={channel:Channel;campaigns:number;linkedContacts:number;opportunities:number;won:number;lost:number;spent:string;costPerLinkedContact:string|null;costPerOpportunity:string|null;winRate:number|null};
+type Opportunity={id:string;title:string;contact:{name:string};campaignId:string|null};
 type User=ShellUser;
 type Summary={total:number;active:number;participants:number;budget:string;spent:string};
 type Paged<T>={items:T[];total:number;page:number;pages:number};
@@ -32,6 +35,9 @@ export default function Marketing(){
  const [selected,setSelected]=useState<Detail|null>(null);
  const [contacts,setContacts]=useState<Contact[]>([]);
  const [contactId,setContactId]=useState('');
+ const [opportunities,setOpportunities]=useState<Opportunity[]>([]);
+ const [opportunityId,setOpportunityId]=useState('');
+ const [channelRows,setChannelRows]=useState<ChannelRow[]>([]);
  const [page,setPage]=useState(1);
  const [status,setStatus]=useState('');
  const [search,setSearch]=useState('');
@@ -45,8 +51,8 @@ export default function Marketing(){
   const query=new URLSearchParams({page:String(page)});
   if(status)query.set('status',status);
   if(search)query.set('q',search);
-  const [result,totals]=await Promise.all([request<Paged<Campaign>>('/marketing/campaigns?'+query),request<Summary>('/marketing/summary')]);
-  setList(result);setSummary(totals);
+  const [result,totals,performance]=await Promise.all([request<Paged<Campaign>>('/marketing/campaigns?'+query),request<Summary>('/marketing/summary'),request<ChannelRow[]>('/marketing/report/channels')]);
+  setList(result);setSummary(totals);setChannelRows(performance);
  },[page,status,search]);
  useEffect(()=>{let live=true;void(async()=>{
   try{
@@ -54,8 +60,8 @@ export default function Marketing(){
    if(!live)return;
    if(user.role==='SYSTEM'){router.replace('/system/empresas');return;}
    setUser(user);
-   const result=await request<Paged<Contact>>('/crm/contacts?page=1');
-   if(live)setContacts(result.items);
+   const [result,opps]=await Promise.all([request<Paged<Contact>>('/crm/contacts?page=1'),request<Paged<Opportunity>>('/crm/opportunities?page=1')]);
+   if(live){setContacts(result.items);setOpportunities(opps.items);}
   }catch(e){if(live)setError(e instanceof Error?e.message:'Erro na autenticação');}
   finally{if(live)setLoading(false)}
  })();return()=>{live=false};},[router]);
@@ -70,7 +76,7 @@ export default function Marketing(){
   }catch(e){setError(e instanceof Error?e.message:'Erro ao salvar');}finally{setBusy(false);}
  }
  async function open(id:string){
-  try{setSelected(await request<Detail>('/marketing/campaigns/'+id));setContactId('');}catch(e){setError(e instanceof Error?e.message:'Erro ao abrir campanha');}
+  try{setSelected(await request<Detail>('/marketing/campaigns/'+id));setContactId('');setOpportunityId('');}catch(e){setError(e instanceof Error?e.message:'Erro ao abrir campanha');}
  }
  async function link(e:FormEvent<HTMLFormElement>){
   e.preventDefault();if(!selected||!contactId)return;setBusy(true);setError('');setNotice('');
@@ -79,6 +85,26 @@ export default function Marketing(){
    await open(selected.id);await reload();setNotice('Contato vinculado.');
   }catch(e){setError(e instanceof Error?e.message:'Erro ao vincular');}finally{setBusy(false);}
  }
+ async function linkOpportunity(e:FormEvent<HTMLFormElement>){
+  e.preventDefault();if(!selected||!opportunityId)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/marketing/campaigns/'+selected.id+'/opportunities',{method:'POST',body:JSON.stringify({opportunityId})});
+   await open(selected.id);await reload();setNotice('Oportunidade atribuída à campanha.');
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao atribuir oportunidade');}
+  finally{setBusy(false);}
+ }
+ async function unlinkOpportunity(id:string){
+  if(!selected)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/marketing/campaigns/'+selected.id+'/opportunities/'+id,{method:'DELETE'});
+   await open(selected.id);await reload();setNotice('Atribuição removida. O contato continua vinculado à campanha.');
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao remover atribuição');}
+  finally{setBusy(false);}
+ }
+ const displayRate=(value:number|null)=>value===null?'—':value.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
+ const displayCost=(value:string|null)=>value===null?'—':money(value);
  if(loading||!user)return <main className="loading-screen">{error||'Carregando Marketing...'}</main>;
  return <AppShell user={user}><main className="marketing-main">
   <div className="marketing-heading"><div><p className="eyebrow">GESTÃO / MARKETING</p><h1>Campanhas</h1><p className="subtitle">Planeje ações, registre investimentos e associe seus contatos.</p></div><Link href="/relacionamento">Ver contatos</Link></div>
@@ -101,8 +127,37 @@ export default function Marketing(){
    </tbody></table>{!list.items.length&&<p className="marketing-muted">Nenhuma campanha cadastrada.</p>}</div>
    <div className="marketing-pages"><button disabled={page<=1} onClick={()=>setPage(p=>p-1)}>Anterior</button><span>Página {page} de {Math.max(1,list.pages)}</span><button disabled={page>=list.pages} onClick={()=>setPage(p=>p+1)}>Próxima</button></div>
   </section>
+  <section className="marketing-panel">
+   <h2>Desempenho por canal</h2>
+   <p className="marketing-muted">Custo por contato vinculado e por oportunidade atribuída, com base nos gastos informados.</p>
+   <div className="marketing-table"><table><thead><tr><th>Canal</th><th>Campanhas</th><th>Contatos vinculados</th><th>Oportunidades</th><th>Ganhos</th><th>Gasto</th><th>Custo / contato</th><th>Custo / oportunidade</th><th>Taxa de ganho</th></tr></thead><tbody>
+     {channelRows.map(row=><tr key={row.channel}><td>{channels[row.channel]}</td><td>{row.campaigns}</td><td>{row.linkedContacts}</td><td>{row.opportunities}</td><td>{row.won}</td><td>{money(row.spent)}</td><td>{displayCost(row.costPerLinkedContact)}</td><td>{displayCost(row.costPerOpportunity)}</td><td>{displayRate(row.winRate)}</td></tr>)}
+   </tbody></table>{!channelRows.length&&<p className="marketing-muted">Sem dados para comparar canais.</p>}</div>
+  </section>
   {selected&&<section className="marketing-panel"><div className="marketing-list-heading"><h2>{selected.name} — Contatos</h2><button onClick={()=>setSelected(null)}>Fechar</button></div>
-   <p className="marketing-muted">Contatos vinculados não equivalem necessariamente a conversões.</p>
+   <p className="marketing-muted">Contatos vinculados não equivalem necessariamente a leads novos. Oportunidades atribuídas têm uma campanha de origem cada.</p>
+   <div className="marketing-attribution-kpis">
+    <article><span>Contatos vinculados</span><strong>{selected.metrics.linkedContacts}</strong></article>
+    <article><span>Oportunidades atribuídas</span><strong>{selected.metrics.opportunities}</strong></article>
+    <article><span>Ganhos / perdidos</span><strong>{selected.metrics.won} / {selected.metrics.lost}</strong></article>
+    <article><span>Taxa de ganho</span><strong>{displayRate(selected.metrics.opportunityWinRate)}</strong></article>
+    <article><span>Custo / contato vinculado</span><strong>{displayCost(selected.metrics.costPerLinkedContact)}</strong></article>
+    <article><span>Custo / oportunidade</span><strong>{displayCost(selected.metrics.costPerOpportunity)}</strong></article>
+   </div>
+   <p className="marketing-muted">{selected.metrics.note}</p>
+   <h3>Oportunidades atribuídas</h3>
+   {canEdit&&<form className="marketing-link-form" onSubmit={linkOpportunity}>
+     <label>Oportunidade existente<select required value={opportunityId} onChange={e=>setOpportunityId(e.target.value)}>
+       <option value="">Selecione uma oportunidade</option>
+       {opportunities.filter(o=>!o.campaignId||o.campaignId===selected.id).map(o=><option key={o.id} value={o.id}>{o.title} — {o.contact.name}</option>)}
+     </select></label><button disabled={!opportunityId||busy}>Atribuir campanha</button>
+     <small>Exibindo as 30 oportunidades mais recentes sem outra atribuição. A vinculação também associa o contato à campanha.</small>
+   </form>}
+   <div className="marketing-table"><table><thead><tr><th>Oportunidade</th><th>Contato</th><th>Etapa</th><th>Valor estimado</th><th>Ação</th></tr></thead><tbody>
+    {selected.opportunities.map(o=><tr key={o.id}><td>{o.title}</td><td>{o.contact.name}</td><td>{o.stage}</td><td>{o.value?money(o.value):'—'}</td><td>{canEdit&&<button disabled={busy} onClick={()=>void unlinkOpportunity(o.id)}>Desvincular</button>}</td></tr>)}
+   </tbody></table>{!selected.opportunities.length&&<p className="marketing-muted">Nenhuma oportunidade atribuída.</p>}</div>
+   {selected.opportunities.length===100&&<p className="marketing-muted">Exibindo até 100 oportunidades recentes.</p>}
+   <h3>Contatos vinculados</h3>
    {canEdit&&<form className="marketing-link-form" onSubmit={link}><label>Contato<select required value={contactId} onChange={e=>setContactId(e.target.value)}><option value="">Selecione</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><button disabled={!contactId||busy}>Vincular</button><small>Seleção limitada aos primeiros 20 contatos da lista.</small></form>}
    <div className="marketing-linked">{selected.contacts.map(item=><Link href={'/relacionamento/contatos/'+item.contact.id} key={item.id}><strong>{item.contact.name}</strong><small>{item.contact.email||'Sem e-mail'}</small></Link>)}{!selected.contacts.length&&<p className="marketing-muted">Nenhum contato vinculado.</p>}</div>
    {selected.contacts.length===100&&<p className="marketing-muted">Exibindo até 100 vínculos.</p>}
