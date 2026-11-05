@@ -93,6 +93,49 @@ export class CrmService {
     return this.prisma.contact.update({ where: { id }, data, select: contactFields });
   }
 
+
+  owners() {
+    return this.prisma.user.findMany({
+      where: { active: true },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+      take: 200,
+    });
+  }
+
+  async kanban(ownerId?: string, q?: string) {
+    if (ownerId && !/^[0-9a-f-]{36}$/i.test(ownerId)) throw new BadRequestException('Responsável inválido');
+    const search = q?.trim();
+    if (search && search.length > 100) throw new BadRequestException('Busca deve ter no máximo 100 caracteres');
+    const where: Prisma.OpportunityWhereInput = {
+      ...(ownerId ? { ownerId } : {}),
+      ...(search ? { OR: [
+        { title: { contains: search, mode: 'insensitive' } },
+        { contact: { name: { contains: search, mode: 'insensitive' } } },
+      ] } : {}),
+    };
+    const limitPerColumn = 50;
+    const result = await Promise.all(stages.map(async stage => {
+      const stageWhere: Prisma.OpportunityWhereInput = { ...where, stage };
+      const [items, total] = await this.prisma.$transaction([
+        this.prisma.opportunity.findMany({
+          where: stageWhere,
+          include: opportunityInclude,
+          orderBy: { updatedAt: 'desc' },
+          take: limitPerColumn,
+        }),
+        this.prisma.opportunity.count({ where: stageWhere }),
+      ]);
+      return { stage, items, total, hasMore: total > limitPerColumn };
+    }));
+    const value = await this.prisma.opportunity.aggregate({ where, _sum: { value: true }, _count: { _all: true } });
+    return {
+      columns: result,
+      totals: { opportunities: value._count._all, value: value._sum.value?.toString() ?? '0' },
+      limitPerColumn,
+    };
+  }
+
   async opportunities(stageInput?: string, pageInput?: string) {
     const page = this.page(pageInput);
     const where: Prisma.OpportunityWhereInput = stageInput ? { stage: this.stage(stageInput) } : {};

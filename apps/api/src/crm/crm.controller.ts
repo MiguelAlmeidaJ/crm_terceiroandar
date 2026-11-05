@@ -16,6 +16,12 @@ export class CrmController {
   @Patch('contacts/:id')
   updateContact(@Param('id') id: string, @Body() body: unknown) { return this.crm.updateContact(id, body); }
 
+  @Get('owners')
+  owners() { return this.crm.owners(); }
+
+  @Get('kanban')
+  kanban(@Query('ownerId') ownerId?: string, @Query('q') q?: string) { return this.crm.kanban(ownerId, q); }
+
   @Get('opportunities')
   opportunities(@Query('stage') stage?: string, @Query('page') page?: string) { return this.crm.opportunities(stage, page); }
 

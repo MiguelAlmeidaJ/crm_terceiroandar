@@ -139,13 +139,13 @@ export default function RelacionamentoPage() {
       <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
       <nav aria-label="Menu principal">
         <Link href="/">Visão geral</Link>
-        <Link href="/relacionamento" aria-current="page">Relacionamento</Link>
+        <Link href="/relacionamento" aria-current="page">Relacionamento</Link><Link href="/relacionamento/kanban">Funil Kanban</Link>
         {me.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
       </nav>
       <p className="sidebar-foot">{me.name} · Ambiente beta</p>
     </aside>
     <main className="crm-main">
-      <div className="crm-heading"><div><p className="eyebrow">CRM / RELACIONAMENTO</p><h1>Relacionamento</h1><p className="subtitle">Organize seus contatos e acompanhe o funil de oportunidades.</p></div><Link className="crm-back" href="/">Voltar ao painel</Link></div>
+      <div className="crm-heading"><div><p className="eyebrow">CRM / RELACIONAMENTO</p><h1>Relacionamento</h1><p className="subtitle">Organize seus contatos e acompanhe o funil de oportunidades.</p></div><div className="crm-heading-actions"><Link className="crm-back" href="/relacionamento/kanban">Abrir Kanban</Link> · <Link className="crm-back" href="/">Voltar ao painel</Link></div></div>
       <section className="crm-stats" aria-label="Resumo do relacionamento">
         <article><span>Contatos</span><strong>{summary?.contacts ?? '—'}</strong></article>
         <article><span>Oportunidades</span><strong>{summary?.opportunities ?? '—'}</strong></article>
