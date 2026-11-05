@@ -7,6 +7,20 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: terceiroandar
+          POSTGRES_PASSWORD: change_me_locally
+          POSTGRES_DB: terceiroandar
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U terceiroandar -d terceiroandar"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,5 +29,7 @@ jobs:
       - run: cp .env.example .env
       - run: npm install
       - run: npm run db:generate
+      - run: npm run db:deploy
+      - run: npm run seed:admin -w @terceiroandar/api
       - run: npm run lint
       - run: npm run build
