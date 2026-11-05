@@ -2,11 +2,22 @@ import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from
 import { AuthGuard, AuthRequest } from '../auth/auth.guard';
 import { TenantGuard } from '../auth/tenant.guard';
 import { CrmService } from './crm.service';
+import { ContactsImportService } from './contacts-import.service';
 
 @Controller('crm')
 @UseGuards(AuthGuard, TenantGuard)
 export class CrmController {
-  constructor(private readonly crm: CrmService) {}
+  constructor(private readonly crm: CrmService,private readonly importService:ContactsImportService) {}
+
+  @Post('contacts/import/preview')
+  importPreview(@Req() req:AuthRequest,@Body() body:unknown){
+    return this.importService.preview(req.user!,body);
+  }
+
+  @Post('contacts/import/commit')
+  importCommit(@Req() req:AuthRequest,@Body() body:unknown){
+    return this.importService.run(req.user!,body);
+  }
 
   @Get('contacts')
   contacts(@Req() req:AuthRequest,@Query('q') q?: string, @Query('page') page?: string) { return this.crm.contacts(req.user!,q, page); }
