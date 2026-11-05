@@ -8,7 +8,7 @@ type Status='RASCUNHO'|'PLANEJADA'|'EM_ANDAMENTO'|'PAUSADA'|'CONCLUIDA'|'CANCELA
 type Channel='INSTAGRAM'|'FACEBOOK'|'GOOGLE_ADS'|'EMAIL'|'WHATSAPP'|'SITE'|'EVENTO'|'INDICACAO'|'OUTRO';
 type Campaign={id:string;name:string;description:string|null;channel:Channel;status:Status;budget:string|null;spent:string;captureToken:string;captureEnabled:boolean;startDate:string|null;endDate:string|null;_count:{contacts:number;leadCaptures:number}};
 type Metrics={capturedLeads:number;costPerCapturedLead:string|null;linkedContacts:number;opportunities:number;won:number;lost:number;open:number;costPerLinkedContact:string|null;costPerOpportunity:string|null;costPerWon:string|null;opportunityWinRate:number|null;opportunityConversionRate:number|null;contactToOpportunityRate:number|null;wonOpportunityValue:string;note:string};
-type Detail=Campaign&{contacts:{id:string;contact:{id:string;name:string;email:string|null}}[];opportunities:{id:string;title:string;stage:string;value:string|null;contact:{name:string}}[];metrics:Metrics};
+type Detail=Campaign&{utmBreakdown:{source:string;medium:string;leads:number}[];contacts:{id:string;contact:{id:string;name:string;email:string|null}}[];opportunities:{id:string;title:string;stage:string;value:string|null;contact:{name:string}}[];metrics:Metrics};
 type ChannelRow={channel:Channel;campaigns:number;linkedContacts:number;opportunities:number;won:number;lost:number;spent:string;costPerLinkedContact:string|null;costPerOpportunity:string|null;winRate:number|null};
 type Opportunity={id:string;title:string;contact:{name:string};campaignId:string|null};
 type User=ShellUser;
@@ -172,6 +172,11 @@ export default function Marketing(){
     <article><span>Custo / oportunidade</span><strong>{displayCost(selected.metrics.costPerOpportunity)}</strong></article>
    </div>
    <p className="marketing-muted">{selected.metrics.note}</p>
+   <h3>Leads por origem UTM</h3>
+   <p className="marketing-muted">Distribuição das capturas únicas recebidas pelo formulário da campanha.</p>
+   <div className="marketing-table"><table><thead><tr><th>utm_source</th><th>utm_medium</th><th>Leads captados</th></tr></thead><tbody>
+    {selected.utmBreakdown.map((row,index)=><tr key={index}><td>{row.source}</td><td>{row.medium}</td><td>{row.leads}</td></tr>)}
+   </tbody></table>{selected.utmBreakdown.length===0&&<p className="marketing-muted">Nenhuma captura com origem registrada.</p>}</div>
    <h3>Oportunidades atribuídas</h3>
    {canEdit&&<form className="marketing-link-form" onSubmit={linkOpportunity}>
      <label>Oportunidade existente<select required value={opportunityId} onChange={e=>setOpportunityId(e.target.value)}>
