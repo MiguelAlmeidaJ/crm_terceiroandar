@@ -139,7 +139,7 @@ export default function RelacionamentoPage() {
       <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
       <nav aria-label="Menu principal">
         <Link href="/">Visão geral</Link>
-        <Link href="/relacionamento" aria-current="page">Relacionamento</Link><Link href="/relacionamento/kanban">Funil Kanban</Link>
+        <Link href="/relacionamento" aria-current="page">Relacionamento</Link><Link href="/relacionamento/kanban">Funil Kanban</Link><Link href="/tarefas">Tarefas comerciais</Link>
         {me.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
       </nav>
       <p className="sidebar-foot">{me.name} · Ambiente beta</p>

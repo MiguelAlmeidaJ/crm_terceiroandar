@@ -104,7 +104,7 @@ export default function KanbanPage() {
       <nav aria-label="Menu principal">
         <Link href="/">Visão geral</Link>
         <Link href="/relacionamento">Relacionamento</Link>
-        <Link href="/relacionamento/kanban" aria-current="page">Funil Kanban</Link>
+        <Link href="/relacionamento/kanban" aria-current="page">Funil Kanban</Link><Link href="/tarefas">Tarefas comerciais</Link>
         {me.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
       </nav>
       <p className="sidebar-foot">{me.name} · Ambiente beta</p>
