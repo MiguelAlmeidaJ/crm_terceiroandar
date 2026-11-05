@@ -9,6 +9,9 @@ import { tenantId } from '../src/auth/tenant.guard';
 import { CurrentUser } from '../src/auth/auth.guard';
 
 async function main() {
+  if (process.env.GITHUB_ACTIONS !== 'true') {
+    throw new Error('Teste multiempresa restrito ao banco efêmero da CI; não execute com dados reais.');
+  }
   const db = new PrismaClient();
   const prisma = db as PrismaService;
   const tenants = new TenantsService(prisma);
