@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './auth.css';
+import './shell.css';
 
 export const metadata: Metadata = {
   title: 'Terceiro Andar | CRM',
