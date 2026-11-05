@@ -47,6 +47,7 @@ export class TenantsService {
       await tx.contact.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
       await tx.opportunity.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
       await tx.opportunityActivity.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
+      await tx.contactInteraction.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
       await tx.commercialTask.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
       await tx.auditLog.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
     }

@@ -35,8 +35,16 @@ async function main() {
     const actorA = identity(adminA);
     const actorB = identity(adminB);
 
-    const contactA = await crm.createContact(actorA, { name: 'Contato isolado A' });
-    const contactB = await crm.createContact(actorB, { name: 'Contato isolado B' });
+    const contactA = await crm.createContact(actorA, { name: 'Contato isolado A',email:'teste@empresa-a.test',tags:['cliente','parceiro'],source:'Indicação' });
+    const contactB = await crm.createContact(actorB, { name: 'Contato isolado B', email:'teste@empresa-a.test' });
+    assert.equal((await crm.contact(actorA, contactA.id)).tags.join(','),'cliente,parceiro');
+    await assert.rejects(()=>crm.createContact(actorA,{name:'Duplicado',email:'TESTE@EMPRESA-A.TEST'}),/Possível contato duplicado/);
+    await assert.rejects(()=>crm.contact(actorA,contactB.id),/Contato não encontrado/);
+    await assert.rejects(()=>crm.contactInteractions(actorA,contactB.id),/Contato não encontrado/);
+    await assert.rejects(()=>crm.createContactInteraction(actorA,contactB.id,{channel:'NOTA',description:'Indevido'}),/Contato não encontrado/);
+    await crm.createContactInteraction(actorA,contactA.id,{channel:'LIGACAO',description:'Primeira ligação'});
+    assert.equal((await crm.contactInteractions(actorA,contactA.id)).total,1);
+    assert.equal((await crm.contactInteractions(actorB,contactB.id)).total,0);
     const listA = await crm.contacts(actorA);
     assert.equal(listA.total, 1);
     assert.equal(listA.items[0].id, contactA.id);
@@ -65,6 +73,7 @@ async function main() {
       role: Role.COLABORADOR, tenantId: legacyId,
     } });
     const legacyContact = await db.contact.create({ data: { name: 'Cliente legado', tenantId: legacyId } });
+    const legacyInteraction = await db.contactInteraction.create({data:{tenantId:legacyId,contactId:legacyContact.id,authorId:legacyUser.id,channel:'NOTA',description:'Interação legado',occurredAt:new Date()}});
     const legacyOpportunity = await db.opportunity.create({ data: {
       title: 'Negócio legado', tenantId: legacyId, contactId: legacyContact.id, ownerId: legacyUser.id,
     } });
@@ -82,6 +91,7 @@ async function main() {
     assert.equal((await db.user.findUniqueOrThrow({ where: { id: legacyUser.id } })).tenantId, adopted.id);
     assert.equal((await db.contact.findUniqueOrThrow({ where: { id: legacyContact.id } })).tenantId, adopted.id);
     assert.equal((await db.opportunity.findUniqueOrThrow({ where: { id: legacyOpportunity.id } })).tenantId, adopted.id);
+    assert.equal((await db.contactInteraction.findUniqueOrThrow({where:{id:legacyInteraction.id}})).tenantId,adopted.id);
     assert.equal((await db.opportunityActivity.findFirstOrThrow({ where: { opportunityId: legacyOpportunity.id } })).tenantId, adopted.id);
     assert.equal((await db.commercialTask.findFirstOrThrow({ where: { opportunityId: legacyOpportunity.id } })).tenantId, adopted.id);
     assert.equal((await db.user.findUniqueOrThrow({ where: { id: legacyUser.id } })).sessionVersion, legacyUser.sessionVersion + 1);
