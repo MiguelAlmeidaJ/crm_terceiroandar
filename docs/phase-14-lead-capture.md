@@ -14,6 +14,7 @@ A página pública solicita nome, e-mail, telefone opcional e aceite explícito 
 ## Indicadores
 - `capturedLeads`: capturas únicas geradas pelo formulário para uma campanha.
 - `costPerCapturedLead`: gasto registrado da campanha dividido pelo número de leads captados; é uma estimativa de CPL, não um custo validado nas plataformas.
+- O detalhe da campanha exibe **Leads por origem UTM**, agrupados por `utm_source` e `utm_medium` (até 30 grupos), usando capturas únicas, sem armazenar dados pessoais no relatório agregado.
 - Os indicadores antigos de contatos vinculados, oportunidades e taxa de ganho permanecem disponíveis. Contatos vinculados manualmente não são contados como capturas.
 
 ## Proteções iniciais
