@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma, TaskPriority, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../infra/prisma/prisma.service';
 import { CurrentUser } from '../auth/auth.guard';
+import { tenantId } from '../auth/tenant.guard';
 
 const taskSelect = {
   id: true, title: true, description: true, status: true, priority: true,
@@ -57,7 +58,7 @@ export class TasksService {
 
   async list(user: CurrentUser, status?: string, assigneeId?: string, page?: string) {
     const pageNumber = this.page(page);
-    const filter: Prisma.CommercialTaskWhereInput = {};
+    const filter: Prisma.CommercialTaskWhereInput = {tenantId:tenantId(user)};
     if (status) filter.status = this.status(status);
     if (!this.manager(user)) {
       if (assigneeId && assigneeId !== user.id) throw new ForbiddenException('Você só pode visualizar suas tarefas');
@@ -73,7 +74,7 @@ export class TasksService {
   }
 
   async summary(user: CurrentUser) {
-    const where: Prisma.CommercialTaskWhereInput = this.manager(user) ? {} : { assigneeId: user.id };
+    const where: Prisma.CommercialTaskWhereInput = this.manager(user) ? {tenantId:tenantId(user)} : {tenantId:tenantId(user), assigneeId: user.id };
     const today = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
     const open: TaskStatus[] = [TaskStatus.PENDENTE, TaskStatus.EM_ANDAMENTO];
     const [pending, overdue, done] = await Promise.all([
@@ -87,11 +88,11 @@ export class TasksService {
   async create(user: CurrentUser, value: unknown) {
     const b = this.body(value, ['title', 'description', 'priority', 'dueDate', 'opportunityId', 'assigneeId']);
     const opportunityId = this.requiredText(b.opportunityId, 'Oportunidade', 100);
-    const opportunity = await this.prisma.opportunity.findUnique({ where: { id: opportunityId } });
+    const opportunity = await this.prisma.opportunity.findFirst({ where: { id: opportunityId,tenantId:tenantId(user) } });
     if (!opportunity) throw new NotFoundException('Oportunidade não encontrada');
     const assigneeId = b.assigneeId === undefined ? user.id : this.requiredText(b.assigneeId, 'Responsável', 100);
     if (!this.manager(user) && assigneeId !== user.id) throw new ForbiddenException('Você só pode atribuir tarefas para si');
-    const assignee = await this.prisma.user.findUnique({ where: { id: assigneeId }, select: { active: true } });
+    const assignee = await this.prisma.user.findFirst({ where: { id: assigneeId,tenantId:tenantId(user) }, select: { active: true } });
     if (!assignee?.active) throw new BadRequestException('Responsável inexistente ou inativo');
 
     return this.prisma.commercialTask.create({
@@ -99,7 +100,7 @@ export class TasksService {
         title: this.requiredText(b.title, 'Título', 150),
         description: b.description === undefined || b.description === null || b.description === '' ? null : this.requiredText(b.description, 'Descrição', 2000),
         priority: b.priority === undefined ? TaskPriority.MEDIA : this.priority(b.priority),
-        dueDate: this.dueDate(b.dueDate),
+        dueDate: this.dueDate(b.dueDate),tenantId:tenantId(user),
         opportunityId, assigneeId, creatorId: user.id,
       },
       select: taskSelect,
@@ -108,7 +109,7 @@ export class TasksService {
 
   async update(user: CurrentUser, id: string, value: unknown) {
     const b = this.body(value, ['title', 'description', 'priority', 'dueDate', 'status', 'assigneeId']);
-    const task = await this.prisma.commercialTask.findUnique({ where: { id } });
+    const task = await this.prisma.commercialTask.findFirst({ where: { id,tenantId:tenantId(user) } });
     if (!task) throw new NotFoundException('Tarefa não encontrada');
     if (!this.manager(user) && task.assigneeId !== user.id) throw new ForbiddenException('Tarefa atribuída a outro usuário');
 
@@ -129,6 +130,6 @@ export class TasksService {
       if (!active?.active) throw new BadRequestException('Responsável inexistente ou inativo');
       data.assigneeId = assigneeId;
     }
-    return this.prisma.commercialTask.update({ where: { id }, data, select: taskSelect });
+    return this.prisma.commercialTask.update({ where: { id,tenantId:tenantId(user) }, data, select: taskSelect });
   }
 }

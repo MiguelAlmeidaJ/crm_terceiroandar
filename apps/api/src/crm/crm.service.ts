@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OpportunityStage, Prisma } from '@prisma/client';
 import { PrismaService } from '../infra/prisma/prisma.service';
+import { CurrentUser } from '../auth/auth.guard';
+import { tenantId } from '../auth/tenant.guard';
 
 const stages = Object.values(OpportunityStage);
 const contactFields = { id: true, name: true, email: true, phone: true, company: true, notes: true, createdAt: true, updatedAt: true } as const;
@@ -53,24 +55,25 @@ export class CrmService {
     return date;
   }
 
-  async contacts(q?: string, pageInput?: string) {
+  async contacts(user:CurrentUser,q?: string, pageInput?: string) {
     const page = this.page(pageInput);
     const search = q?.trim();
     if (search && search.length > 100) throw new BadRequestException('Busca muito longa');
-    const where: Prisma.ContactWhereInput = search ? { OR: [
+    const where: Prisma.ContactWhereInput = search ? { tenantId:tenantId(user), OR: [
       { name: { contains: search, mode: 'insensitive' } },
       { email: { contains: search, mode: 'insensitive' } },
       { company: { contains: search, mode: 'insensitive' } },
-    ] } : {};
+    ] } : {tenantId:tenantId(user)};
     const [items, total] = await this.prisma.$transaction([
       this.prisma.contact.findMany({ where, select: contactFields, take: 20, skip: (page - 1) * 20, orderBy: { createdAt: 'desc' } }),
       this.prisma.contact.count({ where }),
     ]);
     return { items, total, page, pages: Math.ceil(total / 20) };
   }
-  createContact(input: unknown) {
+  createContact(user:CurrentUser,input: unknown) {
     const b = this.obj(input, ['name', 'email', 'phone', 'company', 'notes']);
     const data = {
+      tenantId: tenantId(user),
       name: this.str(b.name, 'Nome', 2, 120),
       email: b.email === undefined ? null : this.optional(b.email, 'E-mail', 254),
       phone: b.phone === undefined ? null : this.optional(b.phone, 'Telefone', 30),
@@ -80,7 +83,7 @@ export class CrmService {
     if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) throw new BadRequestException('E-mail inválido');
     return this.prisma.contact.create({ data, select: contactFields });
   }
-  async updateContact(id: string, input: unknown) {
+  async updateContact(user:CurrentUser,id: string, input: unknown) {
     const b = this.obj(input, ['name', 'email', 'phone', 'company', 'notes'], true);
     const data: Prisma.ContactUpdateInput = {};
     if ('name' in b) data.name = this.str(b.name, 'Nome', 2, 120);
@@ -88,26 +91,27 @@ export class CrmService {
       if (key in b) data[key] = this.optional(b[key], key, key === 'notes' ? 3000 : key === 'email' ? 254 : 120);
     }
     if (typeof data.email === 'string' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) throw new BadRequestException('E-mail inválido');
-    const existing = await this.prisma.contact.findUnique({ where: { id } });
+    const existing = await this.prisma.contact.findFirst({ where: { id,tenantId:tenantId(user) } });
     if (!existing) throw new NotFoundException('Contato não encontrado');
-    return this.prisma.contact.update({ where: { id }, data, select: contactFields });
+    return this.prisma.contact.update({ where: { id,tenantId:tenantId(user) }, data, select: contactFields });
   }
 
 
-  owners() {
+  owners(user:CurrentUser) {
     return this.prisma.user.findMany({
-      where: { active: true },
+      where: { active: true, tenantId:tenantId(user) },
       select: { id: true, name: true, email: true },
       orderBy: { name: 'asc' },
       take: 200,
     });
   }
 
-  async kanban(ownerId?: string, q?: string) {
+  async kanban(user:CurrentUser,ownerId?: string, q?: string) {
     if (ownerId && !/^[0-9a-f-]{36}$/i.test(ownerId)) throw new BadRequestException('Responsável inválido');
     const search = q?.trim();
     if (search && search.length > 100) throw new BadRequestException('Busca deve ter no máximo 100 caracteres');
     const where: Prisma.OpportunityWhereInput = {
+      tenantId:tenantId(user),
       ...(ownerId ? { ownerId } : {}),
       ...(search ? { OR: [
         { title: { contains: search, mode: 'insensitive' } },
@@ -136,33 +140,33 @@ export class CrmService {
     };
   }
 
-  async opportunities(stageInput?: string, pageInput?: string) {
+  async opportunities(user:CurrentUser,stageInput?: string, pageInput?: string) {
     const page = this.page(pageInput);
-    const where: Prisma.OpportunityWhereInput = stageInput ? { stage: this.stage(stageInput) } : {};
+    const where: Prisma.OpportunityWhereInput = { tenantId:tenantId(user), ...(stageInput ? {stage:this.stage(stageInput)} : {}) };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.opportunity.findMany({ where, include: opportunityInclude, orderBy: { createdAt: 'desc' }, take: 30, skip: (page - 1) * 30 }),
       this.prisma.opportunity.count({ where }),
     ]);
     return { items, total, page, pages: Math.ceil(total / 30) };
   }
-  async createOpportunity(input: unknown, actorId: string) {
+  async createOpportunity(user:CurrentUser,input: unknown) {
     const b = this.obj(input, ['title', 'description', 'value', 'contactId', 'ownerId', 'expectedAt']);
     const contactId = this.str(b.contactId, 'Contato', 1, 100);
-    if (!await this.prisma.contact.findUnique({ where: { id: contactId } })) throw new BadRequestException('Contato não encontrado');
-    let ownerId = actorId;
+    if (!await this.prisma.contact.findFirst({ where: { id: contactId,tenantId:tenantId(user) } })) throw new BadRequestException('Contato não encontrado');
+    let ownerId = user.id;
     if (b.ownerId !== undefined && b.ownerId !== null && b.ownerId !== '') ownerId = this.str(b.ownerId, 'Responsável', 1, 100);
-    const owner = await this.prisma.user.findUnique({ where: { id: ownerId } });
+    const owner = await this.prisma.user.findFirst({ where: { id: ownerId,tenantId:tenantId(user) } });
     if (!owner || !owner.active) throw new BadRequestException('Responsável inválido ou inativo');
     return this.prisma.opportunity.create({ data: {
-      title: this.str(b.title, 'Título', 2, 150), contactId, ownerId,
+      title: this.str(b.title, 'Título', 2, 150), contactId, ownerId,tenantId:tenantId(user),
       description: b.description === undefined ? null : this.optional(b.description, 'Descrição', 3000),
       value: b.value === undefined ? null : this.value(b.value),
       expectedAt: b.expectedAt === undefined ? null : this.date(b.expectedAt),
     }, include: opportunityInclude });
   }
-  async updateOpportunity(id: string, input: unknown, actorId: string) {
+  async updateOpportunity(user:CurrentUser,id: string, input: unknown) {
     const b = this.obj(input, ['title', 'description', 'value', 'stage', 'ownerId', 'expectedAt'], true);
-    const previous = await this.prisma.opportunity.findUnique({ where: { id } });
+    const previous = await this.prisma.opportunity.findFirst({ where: { id,tenantId:tenantId(user) } });
     if (!previous) throw new NotFoundException('Oportunidade não encontrada');
     const data: Prisma.OpportunityUncheckedUpdateInput = {};
     if ('title' in b) data.title = this.str(b.title, 'Título', 2, 150);
@@ -177,28 +181,28 @@ export class CrmService {
       data.ownerId = ownerId;
     }
     return this.prisma.$transaction(async tx => {
-      const updated = await tx.opportunity.update({ where: { id }, data, include: opportunityInclude });
+      const updated = await tx.opportunity.update({ where: { id,tenantId:tenantId(user) }, data, include: opportunityInclude });
       if (data.stage && data.stage !== previous.stage) {
-        await tx.opportunityActivity.create({ data: { opportunityId: id, authorId: actorId, message: `Etapa alterada: ${previous.stage} → ${data.stage}` } });
+        await tx.opportunityActivity.create({ data: { opportunityId: id, authorId: user.id,tenantId:tenantId(user), message: `Etapa alterada: ${previous.stage} → ${data.stage}` } });
       }
       return updated;
     });
   }
-  async activities(id: string) {
+  async activities(user:CurrentUser,id: string) {
     if (!await this.prisma.opportunity.findUnique({ where: { id } })) throw new NotFoundException('Oportunidade não encontrada');
-    return this.prisma.opportunityActivity.findMany({ where: { opportunityId: id }, include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' }, take: 100 });
+    return this.prisma.opportunityActivity.findMany({ where: { opportunityId: id,tenantId:tenantId(user) }, include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' }, take: 100 });
   }
-  async addActivity(id: string, input: unknown, actorId: string) {
+  async addActivity(user:CurrentUser,id: string, input: unknown) {
     const b = this.obj(input, ['message']);
     const message = this.str(b.message, 'Atividade', 2, 2000);
     if (!await this.prisma.opportunity.findUnique({ where: { id } })) throw new NotFoundException('Oportunidade não encontrada');
-    return this.prisma.opportunityActivity.create({ data: { opportunityId: id, authorId: actorId, message } });
+    return this.prisma.opportunityActivity.create({ data: { opportunityId: id, authorId:user.id,tenantId:tenantId(user), message } });
   }
-  async summary() {
+  async summary(user:CurrentUser) {
     const [contacts, opportunities, byStage] = await Promise.all([
-      this.prisma.contact.count(),
-      this.prisma.opportunity.count(),
-      this.prisma.opportunity.groupBy({ by: ['stage'], _count: { _all: true } }),
+      this.prisma.contact.count({where:{tenantId:tenantId(user)}}),
+      this.prisma.opportunity.count({where:{tenantId:tenantId(user)}}),
+      this.prisma.opportunity.groupBy({ by: ['stage'],where:{tenantId:tenantId(user)}, _count: { _all: true } }),
     ]);
     return { contacts, opportunities, byStage: Object.fromEntries(stages.map(s => [s, byStage.find(x => x.stage === s)?._count._all || 0])) };
   }

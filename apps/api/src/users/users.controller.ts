@@ -9,18 +9,18 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get('users')
-  list() { return this.users.list(); }
+  list(@Req() req:AuthRequest) { return this.users.list(req.user!); }
 
   @Post('users')
   create(@Body() body: UserInput, @Req() req: AuthRequest) {
-    return this.users.create(body, req.user!.id);
+    return this.users.create(body, req.user!);
   }
 
   @Patch('users/:id')
   update(@Param('id') id: string, @Body() body: UserInput, @Req() req: AuthRequest) {
-    return this.users.update(id, body, req.user!.id);
+    return this.users.update(id, body, req.user!);
   }
 
   @Get('audit')
-  audit() { return this.users.audit(); }
+  audit(@Req() req:AuthRequest) { return this.users.audit(req.user!); }
 }

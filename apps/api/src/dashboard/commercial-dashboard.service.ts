@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { OpportunityStage, Prisma, TaskStatus } from '@prisma/client';
 import { CurrentUser } from '../auth/auth.guard';
+import { tenantId } from '../auth/tenant.guard';
 import { PrismaService } from '../infra/prisma/prisma.service';
 
 const stageOrder = Object.values(OpportunityStage);
@@ -27,12 +28,13 @@ export class CommercialDashboardService {
     const now = new Date();
     const since = period === 'all' ? undefined : new Date(now.getTime() - Number(period.slice(0, -1)) * 86_400_000);
     const where: Prisma.OpportunityWhereInput = {
+      tenantId:tenantId(user),
       ...(scopedOwner ? { ownerId: scopedOwner } : {}),
       ...(since ? { createdAt: { gte: since, lte: now } } : {}),
     };
     const openStatuses = [TaskStatus.PENDENTE, TaskStatus.EM_ANDAMENTO];
     const today = new Date(now.toISOString().slice(0, 10) + 'T00:00:00.000Z');
-    const taskWhere: Prisma.CommercialTaskWhereInput = scopedOwner ? { assigneeId: scopedOwner } : {};
+    const taskWhere: Prisma.CommercialTaskWhereInput = scopedOwner ? { tenantId:tenantId(user), assigneeId: scopedOwner } : {tenantId:tenantId(user)};
 
     const [stages, overall, ownersGrouped, openTasks, overdueTasks, owners] = await Promise.all([
       this.prisma.opportunity.groupBy({
@@ -53,7 +55,7 @@ export class CommercialDashboardService {
         where: { ...taskWhere, status: { in: openStatuses }, dueDate: { lt: today } },
       }),
       this.prisma.user.findMany({
-        where: manager ? {} : { id: user.id },
+        where: manager ? {tenantId:tenantId(user)} : {tenantId:tenantId(user), id: user.id },
         select: { id: true, name: true, active: true },
         orderBy: { name: 'asc' },
       }),

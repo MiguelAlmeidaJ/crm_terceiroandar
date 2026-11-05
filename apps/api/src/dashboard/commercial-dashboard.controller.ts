@@ -1,9 +1,10 @@
 import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { TenantGuard } from '../auth/tenant.guard';
 import { AuthGuard, AuthRequest } from '../auth/auth.guard';
 import { CommercialDashboardService } from './commercial-dashboard.service';
 
 @Controller('dashboard/commercial')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard,TenantGuard)
 export class CommercialDashboardController {
   constructor(private readonly dashboard: CommercialDashboardService) {}
 

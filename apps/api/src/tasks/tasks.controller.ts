@@ -1,9 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { TenantGuard } from '../auth/tenant.guard';
 import { AuthGuard, AuthRequest } from '../auth/auth.guard';
 import { TasksService } from './tasks.service';
 
 @Controller('tasks')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard,TenantGuard)
 export class TasksController {
   constructor(private readonly tasks: TasksService) {}
 

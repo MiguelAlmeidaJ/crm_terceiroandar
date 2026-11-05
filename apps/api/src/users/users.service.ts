@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma, Role } from '@prisma/client';
 import { hash } from 'bcryptjs';
 import { PrismaService } from '../infra/prisma/prisma.service';
+import { CurrentUser } from '../auth/auth.guard';
+import { tenantId } from '../auth/tenant.guard';
 
 export type UserInput = { name?: unknown; email?: unknown; password?: unknown; role?: unknown; active?: unknown };
 const publicFields = { id: true, name: true, email: true, role: true, active: true, createdAt: true, updatedAt: true } as const;
@@ -39,16 +41,17 @@ export class UsersService {
     throw error;
   }
 
-  list() {
-    return this.prisma.user.findMany({ select: publicFields, orderBy: { createdAt: 'desc' }, take: 200 });
+  list(user:CurrentUser) {
+    return this.prisma.user.findMany({ where: {tenantId:tenantId(user)},select: publicFields, orderBy: { createdAt: 'desc' }, take: 200 });
   }
-  audit() {
+  audit(user:CurrentUser) {
     return this.prisma.auditLog.findMany({
+      where:{tenantId:tenantId(user)},
       select: { id: true, action: true, targetId: true, details: true, createdAt: true, actor: { select: { name: true, email: true } } },
       orderBy: { createdAt: 'desc' }, take: 100,
     });
   }
-  async create(body: UserInput, actorId: string) {
+  async create(body: UserInput, actor:CurrentUser) {
     this.keys(body, ['name', 'email', 'password', 'role']);
     const name = this.name(body.name);
     const email = this.email(body.email);
@@ -56,13 +59,13 @@ export class UsersService {
     const passwordHash = await hash(this.password(body.password), 12);
     try {
       return await this.prisma.$transaction(async tx => {
-        const user = await tx.user.create({ data: { name, email, role, passwordHash }, select: publicFields });
-        await tx.auditLog.create({ data: { actorId, action: 'USER_CREATED', targetId: user.id, details: { role, email } } });
+        const user = await tx.user.create({ data: { name, email, role, passwordHash,tenantId:tenantId(actor) }, select: publicFields });
+        await tx.auditLog.create({ data: { actorId:actor.id, tenantId:tenantId(actor), action: 'USER_CREATED', targetId: user.id, details: { role, email } } });
         return user;
       });
     } catch (error) { return this.uniqueError(error); }
   }
-  async update(id: string, body: UserInput, actorId: string) {
+  async update(id: string, body: UserInput, actor:CurrentUser) {
     this.keys(body, ['name', 'email', 'password', 'role', 'active']);
     if (!Object.keys(body).length) throw new BadRequestException('Informe pelo menos um campo');
     const data: Prisma.UserUpdateInput = {};
@@ -74,7 +77,7 @@ export class UsersService {
       if (typeof body.active !== 'boolean') throw new BadRequestException('Status inválido');
       data.active = body.active;
     }
-    if (actorId === id && (data.active === false || (data.role !== undefined && data.role !== Role.ADMIN))) {
+    if (actor.id === id && (data.active === false || (data.role !== undefined && data.role !== Role.ADMIN))) {
       throw new BadRequestException('Você não pode remover seu próprio acesso administrativo');
     }
     try {
@@ -83,13 +86,13 @@ export class UsersService {
         if (!existing) throw new NotFoundException('Usuário não encontrado');
         // Garante que o último administrador ativo não seja removido por engano.
         if (existing.active && existing.role === Role.ADMIN && (data.active === false || (data.role && data.role !== Role.ADMIN))) {
-          const count = await tx.user.count({ where: { active: true, role: Role.ADMIN } });
+          const count = await tx.user.count({ where: { active: true, role: Role.ADMIN,tenantId:tenantId(actor) } });
           if (count <= 1) throw new BadRequestException('É necessário manter um administrador ativo');
         }
-        const user = await tx.user.update({ where: { id }, data, select: publicFields });
+        const user = await tx.user.update({ where: { id,tenantId:tenantId(actor) }, data, select: publicFields });
         await tx.auditLog.create({
           data: {
-            actorId, action: 'USER_UPDATED', targetId: id,
+            actorId:actor.id,tenantId:tenantId(actor), action: 'USER_UPDATED', targetId: id,
             details: { fields: Object.keys(body).filter(key => key !== 'password'), passwordChanged: body.password !== undefined },
           },
         });

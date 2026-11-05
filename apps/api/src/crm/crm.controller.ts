@@ -1,42 +1,43 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard, AuthRequest } from '../auth/auth.guard';
+import { TenantGuard } from '../auth/tenant.guard';
 import { CrmService } from './crm.service';
 
 @Controller('crm')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, TenantGuard)
 export class CrmController {
   constructor(private readonly crm: CrmService) {}
 
   @Get('contacts')
-  contacts(@Query('q') q?: string, @Query('page') page?: string) { return this.crm.contacts(q, page); }
+  contacts(@Req() req:AuthRequest,@Query('q') q?: string, @Query('page') page?: string) { return this.crm.contacts(req.user!,q, page); }
 
   @Post('contacts')
-  createContact(@Body() body: unknown) { return this.crm.createContact(body); }
+  createContact(@Req() req:AuthRequest,@Body() body: unknown) { return this.crm.createContact(req.user!,body); }
 
   @Patch('contacts/:id')
-  updateContact(@Param('id') id: string, @Body() body: unknown) { return this.crm.updateContact(id, body); }
+  updateContact(@Req() req:AuthRequest,@Param('id') id: string, @Body() body: unknown) { return this.crm.updateContact(req.user!,id, body); }
 
   @Get('owners')
-  owners() { return this.crm.owners(); }
+  owners(@Req() req:AuthRequest) { return this.crm.owners(req.user!); }
 
   @Get('kanban')
-  kanban(@Query('ownerId') ownerId?: string, @Query('q') q?: string) { return this.crm.kanban(ownerId, q); }
+  kanban(@Req() req:AuthRequest,@Query('ownerId') ownerId?: string, @Query('q') q?: string) { return this.crm.kanban(req.user!,ownerId, q); }
 
   @Get('opportunities')
-  opportunities(@Query('stage') stage?: string, @Query('page') page?: string) { return this.crm.opportunities(stage, page); }
+  opportunities(@Req() req:AuthRequest,@Query('stage') stage?: string, @Query('page') page?: string) { return this.crm.opportunities(req.user!,stage, page); }
 
   @Post('opportunities')
-  createOpportunity(@Body() body: unknown, @Req() req: AuthRequest) { return this.crm.createOpportunity(body, req.user!.id); }
+  createOpportunity(@Body() body: unknown, @Req() req: AuthRequest) { return this.crm.createOpportunity(req.user!,body); }
 
   @Patch('opportunities/:id')
-  updateOpportunity(@Param('id') id: string, @Body() body: unknown, @Req() req: AuthRequest) { return this.crm.updateOpportunity(id, body, req.user!.id); }
+  updateOpportunity(@Param('id') id: string, @Body() body: unknown, @Req() req: AuthRequest) { return this.crm.updateOpportunity(req.user!,id, body); }
 
   @Get('opportunities/:id/activities')
-  activities(@Param('id') id: string) { return this.crm.activities(id); }
+  activities(@Req() req:AuthRequest,@Param('id') id: string) { return this.crm.activities(req.user!,id); }
 
   @Post('opportunities/:id/activities')
-  addActivity(@Param('id') id: string, @Body() body: unknown, @Req() req: AuthRequest) { return this.crm.addActivity(id, body, req.user!.id); }
+  addActivity(@Param('id') id: string, @Body() body: unknown, @Req() req: AuthRequest) { return this.crm.addActivity(req.user!,id, body); }
 
   @Get('summary')
-  summary() { return this.crm.summary(); }
+  summary(@Req() req:AuthRequest) { return this.crm.summary(req.user!); }
 }
