@@ -200,6 +200,21 @@ export class MarketingService {
   return {success:true};
  }
 
+ async utmBreakdown(user:CurrentUser,id:string){
+  const tenant=tenantId(user);
+  const groups=await this.prisma.marketingLeadCapture.groupBy({
+   by:['utmSource','utmMedium'],
+   where:{tenantId:tenant,campaignId:id},
+   _count:{_all:true},
+   orderBy:{_count:{id:'desc'}},
+   take:30,
+  });
+  return groups.map(group=>({
+   source:group.utmSource||'Não informada',
+   medium:group.utmMedium||'Não informado',
+   leads:group._count._all
+  }));
+ }
  async one(user:CurrentUser,id:string) {
   const campaign=await this.prisma.marketingCampaign.findFirst({
    where:{id,tenantId:tenantId(user)},
@@ -209,7 +224,8 @@ export class MarketingService {
    }},
   });
   if(!campaign)throw new NotFoundException('Campanha não encontrada');
-  return {...campaign,metrics:await this.metrics(user,id)};
+  const [metrics,utmBreakdown]=await Promise.all([this.metrics(user,id),this.utmBreakdown(user,id)]);
+  return {...campaign,metrics,utmBreakdown};
  }
  async create(user:CurrentUser,input:unknown){
   this.manager(user);
