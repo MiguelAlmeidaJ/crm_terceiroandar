@@ -114,6 +114,8 @@ async function main() {
     assert.equal((await crm.contacts(actorA)).total,3);
     const recorded=await db.marketingLeadCapture.findFirstOrThrow({where:{tenantId:a.id,campaignId:campaign.id}});
     assert.equal(recorded.utmCampaign,'primavera');
+    assert.equal((await marketing.one(actorA,campaign.id)).utmBreakdown[0].source,'instagram');
+    assert.equal((await marketing.one(actorA,campaign.id)).utmBreakdown[0].leads,1);
     await assert.rejects(
       ()=>leads.capture(campaign.captureToken,{...submission,consent:false},'192.0.2.11'),
       /consentimento/
