@@ -110,7 +110,10 @@ model Opportunity {
   updatedAt    DateTime         @updatedAt @map("updated_at")
   activities   OpportunityActivity[]
   tasks        CommercialTask[]
+  campaignId String? @map("campaign_id")
+  campaign MarketingCampaign? @relation(fields:[campaignId],references:[id],onDelete:SetNull)
 
+  @@index([tenantId,campaignId])
   @@index([stage])
   @@index([contactId])
   @@index([ownerId])
@@ -256,6 +259,7 @@ model MarketingCampaign {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   contacts MarketingCampaignContact[]
+  opportunities Opportunity[]
 
   @@index([tenantId,status])
   @@index([tenantId,channel])
