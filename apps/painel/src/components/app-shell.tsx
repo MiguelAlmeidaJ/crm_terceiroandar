@@ -11,6 +11,7 @@ function UiIcon({name,size=19}:{name:string;size?:number}){
  users:<><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a7 7 0 0 1 14 0v2M16 4a4 4 0 0 1 0 7M19 15a5 5 0 0 1 3 5"/></>,
  kanban:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7v10M12 7v6M16 7v9"/></>,
  tasks:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m7 9 2 2 4-4M7 16h10"/></>,
+ marketing:<><path d="M3 11v2l12 5V6L3 11Z"/><path d="M15 9c3 0 5 2 5 3s-2 3-5 3M7 15l2 5h3"/></>,
  settings:<><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></>,
  profile:<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
  moon:<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>,
@@ -29,6 +30,7 @@ const roleName: Record<string,string> = { SYSTEM:'Sistema', ADMIN:'Administrador
 const sections = [
   { heading:'VISÃO GERAL', links:[['/','Início','home'],['/dashboard/comercial','Dashboard comercial','chart']] },
   { heading:'GESTÃO COMERCIAL', links:[['/relacionamento','Relacionamento','users'],['/relacionamento/kanban','Funil Kanban','kanban'],['/tarefas','Tarefas comerciais','tasks']] },
+  { heading:'MARKETING', links:[['/marketing','Campanhas','marketing']] },
   { heading:'CONFIGURAÇÕES', links:[['/admin/usuarios','Usuários e acessos','settings']] },
 ];
 const systemSections = [{ heading:'PLATAFORMA', links:[['/system/empresas','Empresas','settings']] }];
