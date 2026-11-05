@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { MarketingCampaignStatus, MarketingChannel, Prisma } from '@prisma/client';
+import { MarketingCampaignStatus, MarketingChannel, OpportunityStage, Prisma } from '@prisma/client';
 import { PrismaService } from '../infra/prisma/prisma.service';
 import { CurrentUser } from '../auth/auth.guard';
 import { tenantId } from '../auth/tenant.guard';
@@ -7,7 +7,7 @@ import { tenantId } from '../auth/tenant.guard';
 const campaignFields = {
   id:true,name:true,description:true,channel:true,status:true,budget:true,spent:true,
   startDate:true,endDate:true,createdAt:true,updatedAt:true,
-  _count:{select:{contacts:true}},
+  _count:{select:{contacts:true,opportunities:true}},
 } as const;
 const statuses=Object.values(MarketingCampaignStatus);
 const channels=Object.values(MarketingChannel);
@@ -107,13 +107,13 @@ export class MarketingService {
  async one(user:CurrentUser,id:string) {
   const campaign=await this.prisma.marketingCampaign.findFirst({
    where:{id,tenantId:tenantId(user)},
-   select:{...campaignFields,contacts:{
+   select:{...campaignFields,opportunities:{select:{id:true,title:true,stage:true,value:true,contact:{select:{name:true}}},orderBy:{createdAt:'desc'},take:100},contacts:{
      select:{id:true,createdAt:true,contact:{select:{id:true,name:true,email:true,phone:true}}},
      orderBy:{createdAt:'desc'},take:100,
    }},
   });
   if(!campaign)throw new NotFoundException('Campanha não encontrada');
-  return campaign;
+  return {...campaign,metrics:await this.metrics(user,id)};
  }
  async create(user:CurrentUser,input:unknown){
   this.manager(user);
