@@ -49,6 +49,8 @@ export class TenantsService {
       await tx.opportunityActivity.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
       await tx.contactInteraction.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
       await tx.commercialTask.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
+      await tx.marketingCampaign.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
+      await tx.marketingCampaignContact.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
       await tx.auditLog.updateMany({where:{tenantId:LEGACY},data:{tenantId:company.id}});
     }
     return tx.tenant.findUniqueOrThrow({where:{id:company.id},select:publicCompany});
