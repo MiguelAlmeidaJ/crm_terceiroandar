@@ -6,19 +6,19 @@ import {AppShell,ShellUser} from '@/components/app-shell';
 import './marketing.css';
 type Status='RASCUNHO'|'PLANEJADA'|'EM_ANDAMENTO'|'PAUSADA'|'CONCLUIDA'|'CANCELADA';
 type Channel='INSTAGRAM'|'FACEBOOK'|'GOOGLE_ADS'|'EMAIL'|'WHATSAPP'|'SITE'|'EVENTO'|'INDICACAO'|'OUTRO';
-type Campaign={id:string;name:string;description:string|null;channel:Channel;status:Status;budget:string|null;spent:string;startDate:string|null;endDate:string|null;_count:{contacts:number}};
-type Metrics={linkedContacts:number;opportunities:number;won:number;lost:number;open:number;costPerLinkedContact:string|null;costPerOpportunity:string|null;costPerWon:string|null;opportunityWinRate:number|null;opportunityConversionRate:number|null;contactToOpportunityRate:number|null;wonOpportunityValue:string;note:string};
+type Campaign={id:string;name:string;description:string|null;channel:Channel;status:Status;budget:string|null;spent:string;captureToken:string;captureEnabled:boolean;startDate:string|null;endDate:string|null;_count:{contacts:number;leadCaptures:number}};
+type Metrics={capturedLeads:number;costPerCapturedLead:string|null;linkedContacts:number;opportunities:number;won:number;lost:number;open:number;costPerLinkedContact:string|null;costPerOpportunity:string|null;costPerWon:string|null;opportunityWinRate:number|null;opportunityConversionRate:number|null;contactToOpportunityRate:number|null;wonOpportunityValue:string;note:string};
 type Detail=Campaign&{contacts:{id:string;contact:{id:string;name:string;email:string|null}}[];opportunities:{id:string;title:string;stage:string;value:string|null;contact:{name:string}}[];metrics:Metrics};
 type ChannelRow={channel:Channel;campaigns:number;linkedContacts:number;opportunities:number;won:number;lost:number;spent:string;costPerLinkedContact:string|null;costPerOpportunity:string|null;winRate:number|null};
 type Opportunity={id:string;title:string;contact:{name:string};campaignId:string|null};
 type User=ShellUser;
-type Summary={total:number;active:number;participants:number;budget:string;spent:string};
+type Summary={total:number;active:number;participants:number;capturedLeads:number;budget:string;spent:string};
 type Paged<T>={items:T[];total:number;page:number;pages:number};
 type Contact={id:string;name:string;email:string|null};
 const API=process.env.NEXT_PUBLIC_API_URL||'http://localhost:3001/api';
 const statuses:Record<Status,string>={RASCUNHO:'Rascunho',PLANEJADA:'Planejada',EM_ANDAMENTO:'Em andamento',PAUSADA:'Pausada',CONCLUIDA:'Concluída',CANCELADA:'Cancelada'};
 const channels:Record<Channel,string>={INSTAGRAM:'Instagram',FACEBOOK:'Facebook',GOOGLE_ADS:'Google Ads',EMAIL:'E-mail',WHATSAPP:'WhatsApp',SITE:'Site',EVENTO:'Evento',INDICACAO:'Indicação',OUTRO:'Outro'};
-const empty={name:'',description:'',channel:'INSTAGRAM' as Channel,status:'RASCUNHO' as Status,budget:'',spent:'0',startDate:'',endDate:''};
+const empty={name:'',description:'',channel:'INSTAGRAM' as Channel,status:'RASCUNHO' as Status,budget:'',spent:'0',captureEnabled:false,startDate:'',endDate:''};
 const money=(v:string|null)=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 async function request<T>(path:string,options?:RequestInit):Promise<T>{
  const r=await fetch(API+path,{...options,credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json',...options?.headers}});
@@ -43,6 +43,9 @@ export default function Marketing(){
  const [search,setSearch]=useState('');
  const [searchInput,setSearchInput]=useState('');
  const [busy,setBusy]=useState(false);
+ const [utmSource,setUtmSource]=useState('instagram');
+ const [utmMedium,setUtmMedium]=useState('social');
+ const [utmCampaign,setUtmCampaign]=useState('');
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
@@ -66,7 +69,7 @@ export default function Marketing(){
   finally{if(live)setLoading(false)}
  })();return()=>{live=false};},[router]);
  useEffect(()=>{if(user)void reload().catch(e=>setError(e instanceof Error?e.message:'Erro ao carregar campanhas'));},[user,reload]);
- function edit(c:Campaign){setEditing(c.id);setForm({name:c.name,description:c.description||'',channel:c.channel,status:c.status,budget:c.budget||'',spent:c.spent,startDate:c.startDate?.slice(0,10)||'',endDate:c.endDate?.slice(0,10)||''});window.scrollTo({top:0,behavior:'smooth'});}
+ function edit(c:Campaign){setEditing(c.id);setForm({name:c.name,description:c.description||'',channel:c.channel,status:c.status,budget:c.budget||'',spent:c.spent,captureEnabled:c.captureEnabled,startDate:c.startDate?.slice(0,10)||'',endDate:c.endDate?.slice(0,10)||''});window.scrollTo({top:0,behavior:'smooth'});}
  async function save(e:FormEvent<HTMLFormElement>){
   e.preventDefault();setBusy(true);setError('');setNotice('');
   try{
@@ -103,12 +106,23 @@ export default function Marketing(){
   }catch(e){setError(e instanceof Error?e.message:'Falha ao remover atribuição');}
   finally{setBusy(false);}
  }
+ function captureLink(token:string){
+  const url=new URL('/captura/'+encodeURIComponent(token),window.location.origin);
+  if(utmSource.trim())url.searchParams.set('utm_source',utmSource.trim());
+  if(utmMedium.trim())url.searchParams.set('utm_medium',utmMedium.trim());
+  if(utmCampaign.trim())url.searchParams.set('utm_campaign',utmCampaign.trim());
+  return url.toString();
+ }
+ async function copyCaptureLink(token:string){
+  try{await navigator.clipboard.writeText(captureLink(token));setNotice('Link de captura copiado.');}
+  catch{setError('Não foi possível copiar. Verifique as permissões do navegador.');}
+ }
  const displayRate=(value:number|null)=>value===null?'—':value.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
  const displayCost=(value:string|null)=>value===null?'—':money(value);
  if(loading||!user)return <main className="loading-screen">{error||'Carregando Marketing...'}</main>;
  return <AppShell user={user}><main className="marketing-main">
   <div className="marketing-heading"><div><p className="eyebrow">GESTÃO / MARKETING</p><h1>Campanhas</h1><p className="subtitle">Planeje ações, registre investimentos e associe seus contatos.</p></div><Link href="/relacionamento">Ver contatos</Link></div>
-  <section className="marketing-kpis"><article><span>Campanhas</span><strong>{summary?.total??'—'}</strong></article><article><span>Em andamento</span><strong>{summary?.active??'—'}</strong></article><article><span>Orçamento</span><strong>{summary?money(summary.budget):'—'}</strong></article><article><span>Gasto</span><strong>{summary?money(summary.spent):'—'}</strong></article><article><span>Contatos vinculados</span><strong>{summary?.participants??'—'}</strong></article></section>
+  <section className="marketing-kpis"><article><span>Campanhas</span><strong>{summary?.total??'—'}</strong></article><article><span>Em andamento</span><strong>{summary?.active??'—'}</strong></article><article><span>Orçamento</span><strong>{summary?money(summary.budget):'—'}</strong></article><article><span>Gasto</span><strong>{summary?money(summary.spent):'—'}</strong></article><article><span>Leads captados pelo formulário</span><strong>{summary?.capturedLeads??'—'}</strong></article></section>
   {error&&<p className="marketing-error" role="alert">{error}</p>}{notice&&<p className="marketing-success" role="status">{notice}</p>}
   {canEdit&&<section className="marketing-panel"><h2>{editing?'Editar campanha':'Nova campanha'}</h2><form className="marketing-form" onSubmit={save}>
     <label>Nome *<input required minLength={2} maxLength={150} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
@@ -118,6 +132,7 @@ export default function Marketing(){
     <label>Gasto realizado (R$)<input required type="number" min="0" step="0.01" value={form.spent} onChange={e=>setForm({...form,spent:e.target.value})}/></label>
     <label>Início<input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></label>
     <label>Término<input type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></label>
+    <label className="marketing-wide marketing-capture-toggle"><input type="checkbox" checked={form.captureEnabled} onChange={e=>setForm({...form,captureEnabled:e.target.checked})}/><span>Habilitar formulário público de captação (somente campanhas em andamento recebem leads)</span></label>
     <label className="marketing-wide">Descrição<textarea rows={3} maxLength={3000} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>
     <div className="marketing-actions"><button type="submit" disabled={busy}>{busy?'Salvando...':editing?'Salvar alterações':'Criar campanha'}</button>{editing&&<button type="button" onClick={()=>{setEditing(null);setForm(empty)}}>Cancelar</button>}</div>
   </form></section>}
@@ -136,8 +151,20 @@ export default function Marketing(){
   </section>
   {selected&&<section className="marketing-panel"><div className="marketing-list-heading"><h2>{selected.name} — Contatos</h2><button onClick={()=>setSelected(null)}>Fechar</button></div>
    <p className="marketing-muted">Contatos vinculados não equivalem necessariamente a leads novos. Oportunidades atribuídas têm uma campanha de origem cada.</p>
+   <section className="marketing-capture-block">
+     <h3>Captação automática de leads</h3>
+     <p className="marketing-muted">{selected.captureEnabled && selected.status==='EM_ANDAMENTO'
+       ?'Formulário público ativo. Compartilhe seu link com UTMs para identificar a origem dos cadastros.'
+       :'Formulário desativado ou campanha fora do status Em andamento. Edite a campanha para habilitar.'}</p>
+     <div className="marketing-capture-fields">
+       <label>utm_source<input maxLength={120} value={utmSource} onChange={e=>setUtmSource(e.target.value)}/></label>
+       <label>utm_medium<input maxLength={120} value={utmMedium} onChange={e=>setUtmMedium(e.target.value)}/></label>
+       <label>utm_campaign<input maxLength={120} value={utmCampaign} onChange={e=>setUtmCampaign(e.target.value)}/></label>
+     </div>
+     <div className="marketing-capture-actions"><button type="button" disabled={!selected.captureEnabled||selected.status!=='EM_ANDAMENTO'} onClick={()=>void copyCaptureLink(selected.captureToken)}>Copiar link rastreável</button></div>
+   </section>
    <div className="marketing-attribution-kpis">
-    <article><span>Contatos vinculados</span><strong>{selected.metrics.linkedContacts}</strong></article>
+    <article><span>Contatos vinculados</span><strong>{selected.metrics.linkedContacts}</strong></article><article><span>Leads captados pelo formulário</span><strong>{selected.metrics.capturedLeads}</strong></article><article><span>Custo por lead captado</span><strong>{displayCost(selected.metrics.costPerCapturedLead)}</strong></article>
     <article><span>Oportunidades atribuídas</span><strong>{selected.metrics.opportunities}</strong></article>
     <article><span>Ganhos / perdidos</span><strong>{selected.metrics.won} / {selected.metrics.lost}</strong></article>
     <article><span>Taxa de ganho</span><strong>{displayRate(selected.metrics.opportunityWinRate)}</strong></article>

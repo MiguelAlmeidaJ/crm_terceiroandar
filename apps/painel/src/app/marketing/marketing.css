@@ -6,3 +6,13 @@
 .marketing-panel h3{font-size:16px;margin:24px 0 14px}
 @media(max-width:900px){.marketing-attribution-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.marketing-attribution-kpis{grid-template-columns:1fr}}
+
+.marketing-capture-toggle{display:flex!important;align-items:center;gap:11px;background:var(--ta-hover);border:1px solid var(--ta-line);border-radius:10px;padding:15px}
+.marketing-capture-toggle input{width:18px!important;height:18px;accent-color:#ff004a}
+.marketing-capture-block{padding:20px;border-radius:12px;background:var(--ta-hover);border:1px solid var(--ta-line);margin-bottom:20px}
+.marketing-capture-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0}
+.marketing-capture-fields label{display:grid;gap:8px;font-size:12px;font-weight:700}
+.marketing-capture-fields input{width:100%;min-width:0;border:1px solid var(--ta-line);background:var(--ta-field);color:var(--ink);border-radius:8px;padding:11px}
+.marketing-capture-actions button{background:#ff004a;color:white;border:0;border-radius:9px;padding:12px 16px;font-weight:700;cursor:pointer}
+.marketing-capture-actions button:disabled{opacity:.4;cursor:default}
+@media(max-width:850px){.marketing-capture-fields{grid-template-columns:1fr}}
