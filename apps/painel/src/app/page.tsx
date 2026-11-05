@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type User = { id: string; name: string; email: string; role: 'ADMIN' | 'GESTOR' | 'COLABORADOR' };
 type Summary = { users: number; activeUsers: number; events: number };
@@ -58,7 +59,7 @@ export default function Home() {
           <span>Relacionamento</span>
           <span>Marketing</span>
           <span>Processos</span>
-          {user.role === 'ADMIN' && <span>Configurações</span>}
+          {user.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
         </nav>
         <div className="sidebar-foot"><p>{user.name}</p><p>{roleNames[user.role]}</p><button className="logout-button" onClick={logout}>Sair</button></div>
       </aside>

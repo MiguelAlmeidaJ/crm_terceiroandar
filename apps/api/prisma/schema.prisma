@@ -7,8 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modelo inicial para validar a infraestrutura.
-// Entidades de negócio serão adicionadas quando o mapa funcional for aplicado.
 model SystemEvent {
   id        String   @id @default(uuid())
   name      String
@@ -32,6 +30,21 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  auditActions AuditLog[] @relation("AuditActor")
 
   @@map("users")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String   @map("actor_id")
+  actor       User     @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+  action      String
+  targetId    String   @map("target_id")
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
 }

@@ -4,6 +4,7 @@ import { HealthController } from './health/health.controller';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { UsersModule } from './users/users.module';
 import { RedisModule } from './infra/redis/redis.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { RedisModule } from './infra/redis/redis.module';
     RedisModule,
     AuthModule,
     DashboardModule,
+    UsersModule,
   ],
   controllers: [HealthController],
 })
