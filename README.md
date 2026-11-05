@@ -60,3 +60,20 @@ Para operações em produção, configure o `.env`, senhas e rede/firewall antes
 | `npm run start:pm2` | Iniciar serviços compilados no PM2 |
 
 **Escopo:** esta entrega é a base técnica. Login/RBAC, módulos de CRM, integrações e aplicação final do manual visual entram nas próximas etapas.
+
+## Autenticação (fase 2)
+
+Após configurar `JWT_SECRET` (mínimo 32 caracteres), `ADMIN_NAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD` (mínimo 12 caracteres) no `.env`, execute:
+
+```bash
+npm run db:deploy
+npm run db:generate
+npm run seed:admin -w @terceiroandar/api
+npm run dev
+```
+
+Acesse http://localhost:3000/login. O login define cookie HttpOnly com sessão JWT válida por 8 horas. As rotas `GET /api/auth/me` e `GET /api/dashboard/summary` exigem sessão. `POST /api/auth/logout` apaga o cookie.
+
+Papéis previstos no banco: `ADMIN`, `GESTOR`, `COLABORADOR`. A implementação inicial restringe a interface de configurações ao ADMIN, mas **não oferece ainda CRUD de usuários nem autorização RBAC granular**. As áreas sem implementação não são links funcionais.
+
+**Importante:** para produção, configurar HTTPS, proxy reverso, segredos fortes, limitação de requisições no login, proteção CSRF quando necessário, auditoria e estratégia de revogação de sessões. Não utilizar credenciais do exemplo. Não há testes automatizados dessa fase ainda.

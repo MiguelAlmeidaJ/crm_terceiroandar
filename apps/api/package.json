@@ -10,7 +10,8 @@
     "prisma:generate": "dotenv -e ../../.env -- prisma generate",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev --name init",
     "prisma:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
-    "prisma:studio": "dotenv -e ../../.env -- prisma studio"
+    "prisma:studio": "dotenv -e ../../.env -- prisma studio",
+    "seed:admin": "dotenv -e ../../.env -- ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",
@@ -21,7 +22,10 @@
     "dotenv": "^16.6.1",
     "ioredis": "^5.4.2",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "@nestjs/jwt": "^11.0.0",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
@@ -30,6 +34,9 @@
     "prisma": "^6.19.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "dotenv-cli": "^8.0.0"
+    "dotenv-cli": "^8.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.3"
   }
 }
