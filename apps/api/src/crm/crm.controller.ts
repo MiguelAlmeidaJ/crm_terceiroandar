@@ -11,6 +11,19 @@ export class CrmController {
   @Get('contacts')
   contacts(@Req() req:AuthRequest,@Query('q') q?: string, @Query('page') page?: string) { return this.crm.contacts(req.user!,q, page); }
 
+  @Get('contacts/:id')
+  contact(@Req() req:AuthRequest,@Param('id') id:string){return this.crm.contact(req.user!,id);}
+
+  @Get('contacts/:id/interactions')
+  contactInteractions(@Req() req:AuthRequest,@Param('id') id:string,@Query('page') page?:string){
+    return this.crm.contactInteractions(req.user!,id,page);
+  }
+
+  @Post('contacts/:id/interactions')
+  createInteraction(@Req() req:AuthRequest,@Param('id') id:string,@Body() body:unknown){
+    return this.crm.createContactInteraction(req.user!,id,body);
+  }
+
   @Post('contacts')
   createContact(@Req() req:AuthRequest,@Body() body: unknown) { return this.crm.createContact(req.user!,body); }
 

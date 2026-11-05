@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OpportunityStage, Prisma } from '@prisma/client';
+import { ContactChannel, OpportunityStage, Prisma } from '@prisma/client';
 import { PrismaService } from '../infra/prisma/prisma.service';
 import { CurrentUser } from '../auth/auth.guard';
 import { tenantId } from '../auth/tenant.guard';
 
 const stages = Object.values(OpportunityStage);
-const contactFields = { id: true, name: true, email: true, phone: true, company: true, notes: true, createdAt: true, updatedAt: true } as const;
+const contactFields = { id: true, name: true, email: true, phone: true, company: true, notes: true, source: true, jobTitle: true, website: true, tags: true, createdAt: true, updatedAt: true } as const;
 const opportunityInclude = {
   contact: { select: { id: true, name: true } },
   owner: { select: { id: true, name: true } },
@@ -63,6 +63,8 @@ export class CrmService {
       { name: { contains: search, mode: 'insensitive' } },
       { email: { contains: search, mode: 'insensitive' } },
       { company: { contains: search, mode: 'insensitive' } },
+      { phone: { contains: search, mode: 'insensitive' } },
+      { tags: { has: search } },
     ] } : {tenantId:tenantId(user)};
     const [items, total] = await this.prisma.$transaction([
       this.prisma.contact.findMany({ where, select: contactFields, take: 20, skip: (page - 1) * 20, orderBy: { createdAt: 'desc' } }),
@@ -71,7 +73,7 @@ export class CrmService {
     return { items, total, page, pages: Math.ceil(total / 20) };
   }
   createContact(user:CurrentUser,input: unknown) {
-    const b = this.obj(input, ['name', 'email', 'phone', 'company', 'notes']);
+    const b = this.obj(input, ['name', 'email', 'phone', 'company', 'notes', 'source', 'jobTitle', 'website', 'tags']);
     const data = {
       tenantId: tenantId(user),
       name: this.str(b.name, 'Nome', 2, 120),
@@ -79,23 +81,84 @@ export class CrmService {
       phone: b.phone === undefined ? null : this.optional(b.phone, 'Telefone', 30),
       company: b.company === undefined ? null : this.optional(b.company, 'Empresa', 120),
       notes: b.notes === undefined ? null : this.optional(b.notes, 'Observações', 3000),
+      source: b.source === undefined ? null : this.optional(b.source, 'Origem', 100),
+      jobTitle: b.jobTitle === undefined ? null : this.optional(b.jobTitle, 'Cargo', 120),
+      website: b.website === undefined ? null : this.optional(b.website, 'Website', 300),
+      tags: b.tags === undefined ? [] : this.parseTags(b.tags),
     };
     if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) throw new BadRequestException('E-mail inválido');
-    return this.prisma.contact.create({ data, select: contactFields });
+    return this.ensureNoDuplicate(user,data.email,data.phone).then(()=>this.prisma.contact.create({ data, select: contactFields }));
   }
   async updateContact(user:CurrentUser,id: string, input: unknown) {
     const b = this.obj(input, ['name', 'email', 'phone', 'company', 'notes'], true);
     const data: Prisma.ContactUpdateInput = {};
     if ('name' in b) data.name = this.str(b.name, 'Nome', 2, 120);
-    for (const key of ['email', 'phone', 'company', 'notes'] as const) {
-      if (key in b) data[key] = this.optional(b[key], key, key === 'notes' ? 3000 : key === 'email' ? 254 : 120);
+    for (const key of ['email', 'phone', 'company', 'notes','source','jobTitle','website'] as const) {
+      if (key in b) data[key] = this.optional(b[key], key, key === 'notes' ? 3000 : key === 'website' ? 300 : key === 'email' ? 254 : 120);
     }
+    if ('tags' in b) data.tags = {set:this.parseTags(b.tags)};
     if (typeof data.email === 'string' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) throw new BadRequestException('E-mail inválido');
     const existing = await this.prisma.contact.findFirst({ where: { id,tenantId:tenantId(user) } });
     if (!existing) throw new NotFoundException('Contato não encontrado');
+    await this.ensureNoDuplicate(user,typeof data.email==='string'?data.email:undefined,typeof data.phone==='string'?data.phone:undefined,id);
     return this.prisma.contact.update({ where: { id,tenantId:tenantId(user) }, data, select: contactFields });
   }
 
+
+
+  private parseTags(input:unknown):string[]{
+    if(!Array.isArray(input)||input.length>15)throw new BadRequestException('Informe no máximo 15 etiquetas');
+    const tags=input.map(tag=>this.str(tag,'Etiqueta',1,30).toLowerCase());
+    if(new Set(tags).size!==tags.length)throw new BadRequestException('Etiquetas repetidas');
+    return tags;
+  }
+  private async ensureNoDuplicate(user:CurrentUser,email?:string|null,phone?:string|null,excludeId?:string){
+    const tests:Prisma.ContactWhereInput[]=[];
+    if(email?.trim())tests.push({email:{equals:email.trim(),mode:'insensitive'}});
+    if(phone?.trim())tests.push({phone:phone.trim()});
+    if(!tests.length)return;
+    const existing=await this.prisma.contact.findFirst({
+      where:{tenantId:tenantId(user),...(excludeId?{id:{not:excludeId}}:{}),OR:tests},
+      select:{id:true,name:true},
+    });
+    if(existing)throw new BadRequestException(`Possível contato duplicado: ${existing.name}. Confira antes de cadastrar.`);
+  }
+  async contact(user:CurrentUser,id:string){
+    const record=await this.prisma.contact.findFirst({
+      where:{id,tenantId:tenantId(user)},
+      select:{...contactFields,opportunities:{
+        select:{id:true,title:true,stage:true,value:true,createdAt:true,owner:{select:{name:true}}},
+        orderBy:{createdAt:'desc'},take:50}},
+    });
+    if(!record)throw new NotFoundException('Contato não encontrado');
+    return record;
+  }
+  async contactInteractions(user:CurrentUser,id:string,pageInput?:string){
+    await this.contact(user,id);
+    const page=this.page(pageInput);
+    const where={tenantId:tenantId(user),contactId:id};
+    const [items,total]=await this.prisma.$transaction([
+      this.prisma.contactInteraction.findMany({where,select:{
+        id:true,channel:true,description:true,occurredAt:true,createdAt:true,
+        author:{select:{id:true,name:true}}
+      },orderBy:[{occurredAt:'desc'},{createdAt:'desc'}],skip:(page-1)*20,take:20}),
+      this.prisma.contactInteraction.count({where})
+    ]);
+    return {items,total,page,pages:Math.ceil(total/20)};
+  }
+  async createContactInteraction(user:CurrentUser,id:string,input:unknown){
+    const b=this.obj(input,['channel','description','occurredAt']);
+    await this.contact(user,id);
+    if(!Object.values(ContactChannel).includes(b.channel as ContactChannel))throw new BadRequestException('Canal inválido');
+    const description=this.str(b.description,'Descrição',2,2000);
+    const occurredAt=b.occurredAt===undefined?new Date():new Date(String(b.occurredAt));
+    if(b.occurredAt!==undefined&&(typeof b.occurredAt!=='string'||Number.isNaN(occurredAt.getTime())))throw new BadRequestException('Data inválida');
+    if(occurredAt.getTime()>Date.now()+60000)throw new BadRequestException('A interação não pode estar no futuro');
+    return this.prisma.contactInteraction.create({data:{
+      tenantId:tenantId(user),contactId:id,authorId:user.id,
+      channel:b.channel as ContactChannel,description,occurredAt
+    },select:{id:true,channel:true,description:true,occurredAt:true,author:{select:{name:true}}}});
+  }
 
   owners(user:CurrentUser) {
     return this.prisma.user.findMany({

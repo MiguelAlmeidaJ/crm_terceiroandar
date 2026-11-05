@@ -37,6 +37,7 @@ model User {
   auditActions AuditLog[] @relation("AuditActor")
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
   authoredActivities OpportunityActivity[] @relation("ActivityAuthor")
+  contactInteractions ContactInteraction[]
   assignedTasks CommercialTask[] @relation("TaskAssignee")
   createdTasks CommercialTask[] @relation("TaskCreator")
 
@@ -77,6 +78,11 @@ model Contact {
   phone         String?
   company       String?
   notes         String?
+  source        String?
+  jobTitle      String?        @map("job_title")
+  website       String?
+  tags          String[]       @default([])
+  interactions  ContactInteraction[]
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
   opportunities Opportunity[]
@@ -178,9 +184,35 @@ model Tenant {
   updatedAt DateTime @updatedAt @map("updated_at")
   users User[]
   contacts Contact[]
+  contactInteractions ContactInteraction[]
   opportunities Opportunity[]
   activities OpportunityActivity[]
   tasks CommercialTask[]
   auditLogs AuditLog[]
   @@map("tenants")
+}
+
+enum ContactChannel {
+  LIGACAO
+  WHATSAPP
+  EMAIL
+  REUNIAO
+  NOTA
+}
+
+model ContactInteraction {
+  id String @id @default(uuid())
+  contactId String @map("contact_id")
+  contact Contact @relation(fields:[contactId],references:[id],onDelete:Restrict)
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Restrict)
+  authorId String @map("author_id")
+  author User @relation(fields:[authorId],references:[id],onDelete:Restrict)
+  channel ContactChannel
+  description String
+  occurredAt DateTime @map("occurred_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId,contactId,occurredAt])
+  @@map("contact_interactions")
 }
