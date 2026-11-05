@@ -7,6 +7,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { UsersModule } from './users/users.module';
 import { TasksModule } from './tasks/tasks.module';
 import { CrmModule } from './crm/crm.module';
+import { MarketingModule } from './marketing/marketing.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { RedisModule } from './infra/redis/redis.module';
 
@@ -20,6 +21,7 @@ import { RedisModule } from './infra/redis/redis.module';
     UsersModule,
     TasksModule,
     CrmModule,
+    MarketingModule,
     TenantsModule,
   ],
   controllers: [HealthController],

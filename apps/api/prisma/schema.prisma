@@ -38,6 +38,8 @@ model User {
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
   authoredActivities OpportunityActivity[] @relation("ActivityAuthor")
   contactInteractions ContactInteraction[]
+  campaigns MarketingCampaign[]
+  campaignContacts MarketingCampaignContact[]
   assignedTasks CommercialTask[] @relation("TaskAssignee")
   createdTasks CommercialTask[] @relation("TaskCreator")
 
@@ -83,6 +85,7 @@ model Contact {
   website       String?
   tags          String[]       @default([])
   interactions  ContactInteraction[]
+  campaignMemberships MarketingCampaignContact[]
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
   opportunities Opportunity[]
@@ -109,6 +112,7 @@ model Opportunity {
   updatedAt    DateTime         @updatedAt @map("updated_at")
   activities   OpportunityActivity[]
   tasks        CommercialTask[]
+  campaigns MarketingCampaign[]
 
   @@index([stage])
   @@index([contactId])
@@ -215,4 +219,62 @@ model ContactInteraction {
 
   @@index([tenantId,contactId,occurredAt])
   @@map("contact_interactions")
+}
+
+enum MarketingCampaignStatus {
+  RASCUNHO
+  PLANEJADA
+  EM_ANDAMENTO
+  PAUSADA
+  CONCLUIDA
+  CANCELADA
+}
+
+enum MarketingChannel {
+  INSTAGRAM
+  FACEBOOK
+  GOOGLE_ADS
+  EMAIL
+  WHATSAPP
+  SITE
+  EVENTO
+  INDICACAO
+  OUTRO
+}
+
+model MarketingCampaign {
+  id String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Restrict)
+  name String
+  description String?
+  channel MarketingChannel
+  status MarketingCampaignStatus @default(RASCUNHO)
+  budget Decimal? @db.Decimal(14,2)
+  spent Decimal @default(0) @db.Decimal(14,2)
+  startDate DateTime? @db.Date @map("start_date")
+  endDate DateTime? @db.Date @map("end_date")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  contacts MarketingCampaignContact[]
+
+  @@index([tenantId,status])
+  @@index([tenantId,channel])
+  @@map("marketing_campaigns")
+}
+
+model MarketingCampaignContact {
+  id String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Restrict)
+  campaignId String @map("campaign_id")
+  campaign MarketingCampaign @relation(fields:[campaignId],references:[id],onDelete:Restrict)
+  contactId String @map("contact_id")
+  contact Contact @relation(fields:[contactId],references:[id],onDelete:Restrict)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([campaignId,contactId])
+  @@index([tenantId,campaignId])
+  @@index([tenantId,contactId])
+  @@map("marketing_campaign_contacts")
 }
