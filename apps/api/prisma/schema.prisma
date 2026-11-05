@@ -31,6 +31,8 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
   auditActions AuditLog[] @relation("AuditActor")
+  ownedOpportunities Opportunity[] @relation("OpportunityOwner")
+  authoredActivities OpportunityActivity[] @relation("ActivityAuthor")
 
   @@map("users")
 }
@@ -47,4 +49,62 @@ model AuditLog {
   @@index([createdAt])
   @@index([actorId, createdAt])
   @@map("audit_logs")
+}
+
+enum OpportunityStage {
+  NOVO
+  QUALIFICACAO
+  PROPOSTA
+  NEGOCIACAO
+  GANHO
+  PERDIDO
+}
+
+model Contact {
+  id            String        @id @default(uuid())
+  name          String
+  email         String?
+  phone         String?
+  company       String?
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  opportunities Opportunity[]
+
+  @@index([name])
+  @@map("contacts")
+}
+
+model Opportunity {
+  id           String           @id @default(uuid())
+  title        String
+  description  String?
+  value        Decimal?         @db.Decimal(14,2)
+  stage        OpportunityStage @default(NOVO)
+  contactId    String           @map("contact_id")
+  contact      Contact          @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  ownerId      String?          @map("owner_id")
+  owner        User?            @relation("OpportunityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  expectedAt   DateTime?        @map("expected_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  activities   OpportunityActivity[]
+
+  @@index([stage])
+  @@index([contactId])
+  @@index([ownerId])
+  @@map("opportunities")
+}
+
+model OpportunityActivity {
+  id             String      @id @default(uuid())
+  opportunityId  String      @map("opportunity_id")
+  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  authorId       String      @map("author_id")
+  author         User        @relation("ActivityAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  message        String
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  @@index([opportunityId, createdAt])
+  @@map("opportunity_activities")
 }
