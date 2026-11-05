@@ -16,6 +16,7 @@ model SystemEvent {
 }
 
 enum Role {
+  SYSTEM
   ADMIN
   GESTOR
   COLABORADOR
@@ -27,6 +28,8 @@ model User {
   email        String   @unique
   passwordHash String   @map("password_hash")
   sessionVersion Int @default(0) @map("session_version")
+  tenantId       String? @map("tenant_id")
+  tenant         Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   role         Role     @default(COLABORADOR)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
@@ -37,6 +40,7 @@ model User {
   assignedTasks CommercialTask[] @relation("TaskAssignee")
   createdTasks CommercialTask[] @relation("TaskCreator")
 
+  @@index([tenantId, role])
   @@map("users")
 }
 
@@ -52,6 +56,9 @@ model AuditLog {
   @@index([createdAt])
   @@index([actorId, createdAt])
   @@map("audit_logs")
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  @@index([tenantId])
 }
 
 enum OpportunityStage {
@@ -76,6 +83,9 @@ model Contact {
 
   @@index([name])
   @@map("contacts")
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  @@index([tenantId])
 }
 
 model Opportunity {
@@ -98,6 +108,9 @@ model Opportunity {
   @@index([contactId])
   @@index([ownerId])
   @@map("opportunities")
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  @@index([tenantId])
 }
 
 model OpportunityActivity {
@@ -111,6 +124,9 @@ model OpportunityActivity {
 
   @@index([opportunityId, createdAt])
   @@map("opportunity_activities")
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  @@index([tenantId])
 }
 
 enum TaskStatus {
@@ -147,4 +163,24 @@ model CommercialTask {
   @@index([opportunityId])
   @@index([status, dueDate])
   @@map("commercial_tasks")
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  @@index([tenantId])
+}
+
+model Tenant {
+  id String @id @default(uuid())
+  name String
+  slug String @unique
+  active Boolean @default(true)
+  isLegacy Boolean @default(false) @map("is_legacy")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  users User[]
+  contacts Contact[]
+  opportunities Opportunity[]
+  activities OpportunityActivity[]
+  tasks CommercialTask[]
+  auditLogs AuditLog[]
+  @@map("tenants")
 }
