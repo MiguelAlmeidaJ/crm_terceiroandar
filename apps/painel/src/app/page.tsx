@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
 
-type User = { id: string; name: string; email: string; role: 'ADMIN' | 'GESTOR' | 'COLABORADOR' };
+type User = { id: string; name: string; email: string; role: 'SYSTEM' | 'ADMIN' | 'GESTOR' | 'COLABORADOR' };
 type Summary = { users: number; activeUsers: number; events: number };
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
