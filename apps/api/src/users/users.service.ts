@@ -72,7 +72,7 @@ export class UsersService {
     if (body.name !== undefined) data.name = this.name(body.name);
     if (body.email !== undefined) data.email = this.email(body.email);
     if (body.role !== undefined) data.role = this.role(body.role);
-    if (body.password !== undefined) data.passwordHash = await hash(this.password(body.password), 12);
+    if (body.password !== undefined) { data.passwordHash = await hash(this.password(body.password), 12); data.sessionVersion = { increment: 1 }; }
     if (body.active !== undefined) {
       if (typeof body.active !== 'boolean') throw new BadRequestException('Status inválido');
       data.active = body.active;

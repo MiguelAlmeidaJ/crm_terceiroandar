@@ -36,3 +36,6 @@ html[data-theme="dark"] :is(.crm-overflow,.admin-panel,.tasks-table-wrap,.commer
  .ta-compact .ta-menu-link .ta-nav-label{display:block}
  .ta-compact .ta-sidebar-footer .ta-sidebar-name{display:grid}
 }
+
+.ta-header-start strong{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:600px){.ta-header-start strong{max-width:170px}}

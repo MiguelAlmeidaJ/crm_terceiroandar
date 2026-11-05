@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
-export type ShellUser = { id: string; name: string; role: string; email?: string };
+export type ShellUser = { id: string; name: string; role: string; email?: string; tenantName?:string|null };
 function UiIcon({name,size=19}:{name:string;size?:number}){
  const p:Record<string,ReactNode>={
  home:<><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></>,
@@ -77,11 +77,11 @@ export function AppShell({user,children}:{user:ShellUser;children:ReactNode}) {
           </div>;
         })}
       </div>
-      <div className="ta-sidebar-footer"><div className="ta-user-mini"><span className="ta-avatar">{initials}</span><span className="ta-sidebar-name"><strong>{user.name}</strong><small>{roleName[user.role]??user.role}</small></span></div><button className="ta-compact-button" onClick={toggleCompact} type="button"><UiIcon name="collapse"/><span>Recolher menu</span></button></div>
+      <div className="ta-sidebar-footer"><div className="ta-user-mini"><span className="ta-avatar">{initials}</span><span className="ta-sidebar-name"><strong>{user.name}</strong><small>{user.tenantName || roleName[user.role]||user.role}</small></span></div><button className="ta-compact-button" onClick={toggleCompact} type="button"><UiIcon name="collapse"/><span>Recolher menu</span></button></div>
     </aside>
     <div className="ta-workspace">
       <div className="ta-header">
-        <div className="ta-header-start"><button type="button" className="ta-mobile-toggle" aria-label="Alternar menu" onClick={()=>setMobile(!mobile)}><UiIcon name="menu"/></button><div><strong>Terceiro Andar</strong><small>Workspace <span className="ta-beta">BETA</span></small></div></div>
+        <div className="ta-header-start"><button type="button" className="ta-mobile-toggle" aria-label="Alternar menu" onClick={()=>setMobile(!mobile)}><UiIcon name="menu"/></button><div><strong>{user.tenantName || 'Terceiro Andar · Plataforma'}</strong><small>{user.role==='SYSTEM'?'Administração do sistema':'Ambiente empresarial'} <span className="ta-beta">BETA</span></small></div></div>
         <div className="ta-header-right">
           <button className="ta-theme-button" title="Alternar tema" aria-label="Alternar tema" onClick={toggleTheme} type="button"><UiIcon name={theme==='light'?'moon':'sun'}/></button>
           <div className="ta-account" ref={dropdown}>

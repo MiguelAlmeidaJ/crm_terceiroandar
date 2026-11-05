@@ -9,8 +9,8 @@ export class AuthService {
 
   async login(email: string, password: string) {
     if (typeof email !== 'string' || typeof password !== 'string') throw new UnauthorizedException('Credenciais inválidas');
-    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-    if (!user || !user.active || !(await compare(password, user.passwordHash))) {
+    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() }, include: { tenant: { select: { name:true,active:true } } } });
+    if (!user || !user.active || (user.tenantId && !user.tenant?.active) || !(await compare(password, user.passwordHash))) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
     const secret = process.env.JWT_SECRET;
@@ -24,7 +24,7 @@ export class AuthService {
         typeof input.name !== 'string' || input.name.trim().length < 2 || input.name.trim().length > 120) {
       throw new BadRequestException('Informe um nome de 2 a 120 caracteres');
     }
-    const updated = await this.prisma.user.update({ where: { id: userId }, data: { name: input.name.trim() } });
+    const updated = await this.prisma.user.update({ where: { id: userId }, data: { name: input.name.trim() }, include:{tenant:{select:{name:true}}} });
     return this.toPublicUser(updated);
   }
 
@@ -51,7 +51,7 @@ export class AuthService {
     return this.jwt.signAsync({ sub: user.id, ver: user.sessionVersion + 1 }, { secret, expiresIn: '8h' });
   }
 
-  toPublicUser(user: { id: string; name: string; email: string; role: string; tenantId: string | null }) {
-    return { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId };
+  toPublicUser(user: { id: string; name: string; email: string; role: string; tenantId: string | null; tenant?:{name:string} | null }) {
+    return { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId, tenantName: user.tenant?.name ?? null };
   }
 }
