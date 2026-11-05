@@ -82,7 +82,7 @@ export class UsersService {
     }
     try {
       return await this.prisma.$transaction(async tx => {
-        const existing = await tx.user.findUnique({ where: { id } });
+        const existing = await tx.user.findFirst({ where: { id,tenantId:tenantId(actor) } });
         if (!existing) throw new NotFoundException('Usuário não encontrado');
         // Garante que o último administrador ativo não seja removido por engano.
         if (existing.active && existing.role === Role.ADMIN && (data.active === false || (data.role && data.role !== Role.ADMIN))) {

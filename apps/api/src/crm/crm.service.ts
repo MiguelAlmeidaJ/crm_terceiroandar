@@ -176,7 +176,7 @@ export class CrmService {
     if ('expectedAt' in b) data.expectedAt = this.date(b.expectedAt);
     if ('ownerId' in b) {
       const ownerId = this.str(b.ownerId, 'Responsável', 1, 100);
-      const owner = await this.prisma.user.findUnique({ where: { id: ownerId } });
+      const owner = await this.prisma.user.findFirst({ where: { id: ownerId, tenantId:tenantId(user) } });
       if (!owner || !owner.active) throw new BadRequestException('Responsável inválido ou inativo');
       data.ownerId = ownerId;
     }
@@ -189,13 +189,13 @@ export class CrmService {
     });
   }
   async activities(user:CurrentUser,id: string) {
-    if (!await this.prisma.opportunity.findUnique({ where: { id } })) throw new NotFoundException('Oportunidade não encontrada');
+    if (!await this.prisma.opportunity.findFirst({ where: { id,tenantId:tenantId(user) } })) throw new NotFoundException('Oportunidade não encontrada');
     return this.prisma.opportunityActivity.findMany({ where: { opportunityId: id,tenantId:tenantId(user) }, include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' }, take: 100 });
   }
   async addActivity(user:CurrentUser,id: string, input: unknown) {
     const b = this.obj(input, ['message']);
     const message = this.str(b.message, 'Atividade', 2, 2000);
-    if (!await this.prisma.opportunity.findUnique({ where: { id } })) throw new NotFoundException('Oportunidade não encontrada');
+    if (!await this.prisma.opportunity.findFirst({ where: { id,tenantId:tenantId(user) } })) throw new NotFoundException('Oportunidade não encontrada');
     return this.prisma.opportunityActivity.create({ data: { opportunityId: id, authorId:user.id,tenantId:tenantId(user), message } });
   }
   async summary(user:CurrentUser) {

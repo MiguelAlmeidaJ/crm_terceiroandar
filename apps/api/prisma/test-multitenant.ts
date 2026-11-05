@@ -43,11 +43,14 @@ async function main() {
     const opportunityA = await crm.createOpportunity(actorA, { title: 'Proposta A', contactId: contactA.id });
     const opportunityB = await crm.createOpportunity(actorB, { title: 'Proposta B', contactId: contactB.id });
     await assert.rejects(() => crm.activities(actorA, opportunityB.id), /Oportunidade não encontrada/);
+    await assert.rejects(() => crm.addActivity(actorA, opportunityB.id, { message: 'Invasão' }), /Oportunidade não encontrada/);
+    await assert.rejects(() => crm.updateOpportunity(actorA, opportunityA.id, {ownerId:adminB.id}), /Responsável inválido/);
     const one = await crm.opportunities(actorA);
     assert.equal(one.total, 1);
     assert.equal(one.items[0].id, opportunityA.id);
     await assert.rejects(() => tasks.create(actorA, { title: 'Tarefa indevida', opportunityId: opportunityB.id, dueDate: '2026-12-01' }), /Oportunidade não encontrada/);
-    await tasks.create(actorA, { title: 'Tarefa A', opportunityId: opportunityA.id, dueDate: '2026-12-01' });
+    const taskA = await tasks.create(actorA, { title: 'Tarefa A', opportunityId: opportunityA.id, dueDate: '2026-12-01' });
+    await assert.rejects(() => tasks.update(actorA, taskA.id, {assigneeId:adminB.id}), /Responsável inexistente/);
     assert.equal((await tasks.list(actorB)).total, 0);
     assert.equal((await tasks.list(actorA)).total, 1);
     assert.throws(() => tenantId({ ...actorA, role: 'SYSTEM', tenantId: null }), /Selecione uma conta empresarial/);

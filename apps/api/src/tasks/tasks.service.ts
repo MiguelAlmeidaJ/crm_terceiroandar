@@ -126,7 +126,7 @@ export class TasksService {
     if ('assigneeId' in b) {
       if (!this.manager(user)) throw new ForbiddenException('Somente gestores podem reatribuir tarefas');
       const assigneeId = this.requiredText(b.assigneeId, 'Responsável', 100);
-      const active = await this.prisma.user.findUnique({ where: { id: assigneeId }, select: { active: true } });
+      const active = await this.prisma.user.findFirst({ where: { id: assigneeId,tenantId:tenantId(user) }, select: { active: true } });
       if (!active?.active) throw new BadRequestException('Responsável inexistente ou inativo');
       data.assigneeId = assigneeId;
     }
