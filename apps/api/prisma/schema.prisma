@@ -33,6 +33,8 @@ model User {
   auditActions AuditLog[] @relation("AuditActor")
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
   authoredActivities OpportunityActivity[] @relation("ActivityAuthor")
+  assignedTasks CommercialTask[] @relation("TaskAssignee")
+  createdTasks CommercialTask[] @relation("TaskCreator")
 
   @@map("users")
 }
@@ -89,6 +91,7 @@ model Opportunity {
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
   activities   OpportunityActivity[]
+  tasks        CommercialTask[]
 
   @@index([stage])
   @@index([contactId])
@@ -107,4 +110,40 @@ model OpportunityActivity {
 
   @@index([opportunityId, createdAt])
   @@map("opportunity_activities")
+}
+
+enum TaskStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum TaskPriority {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+model CommercialTask {
+  id            String          @id @default(uuid())
+  title         String
+  description   String?
+  status        TaskStatus      @default(PENDENTE)
+  priority      TaskPriority    @default(MEDIA)
+  dueDate       DateTime        @db.Date @map("due_date")
+  completedAt   DateTime?       @map("completed_at")
+  opportunityId String          @map("opportunity_id")
+  opportunity   Opportunity     @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  assigneeId    String          @map("assignee_id")
+  assignee      User            @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  creatorId     String          @map("creator_id")
+  creator       User            @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  @@index([assigneeId, status, dueDate])
+  @@index([opportunityId])
+  @@index([status, dueDate])
+  @@map("commercial_tasks")
 }

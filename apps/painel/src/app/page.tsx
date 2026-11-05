@@ -58,7 +58,7 @@ export default function Home() {
           <a href="/" aria-current="page">Visão geral</a>
           <Link href="/relacionamento">Relacionamento</Link>
           <span>Marketing</span>
-          <span>Processos</span>
+          <Link href="/tarefas">Tarefas comerciais</Link>
           {user.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
         </nav>
         <div className="sidebar-foot"><p>{user.name}</p><p>{roleNames[user.role]}</p><button className="logout-button" onClick={logout}>Sair</button></div>
