@@ -6,6 +6,8 @@ import { TenantsService } from '../src/tenants/tenants.service';
 import { CrmService } from '../src/crm/crm.service';
 import { ContactsImportService } from '../src/crm/contacts-import.service';
 import { MarketingService } from '../src/marketing/marketing.service';
+import { MarketingLeadService } from '../src/marketing/marketing-lead.service';
+import { RedisService } from '../src/infra/redis/redis.service';
 import { TasksService } from '../src/tasks/tasks.service';
 import { tenantId } from '../src/auth/tenant.guard';
 import { CurrentUser } from '../src/auth/auth.guard';
@@ -20,6 +22,20 @@ async function main() {
   const crm = new CrmService(prisma);
   const importer = new ContactsImportService(prisma);
   const marketing = new MarketingService(prisma);
+  const limiter=new Map<string,number>();
+  const redisMock={
+    client:{
+      multi(){
+        let key='';
+        return {
+          incr(value:string){key=value;return this;},
+          expire(_key:string,_seconds:number,_condition:string){return this;},
+          async exec(){const n=(limiter.get(key)||0)+1;limiter.set(key,n);return [[null,n],[null,1]];}
+        };
+      }
+    }
+  } as unknown as RedisService;
+  const leads=new MarketingLeadService(prisma,redisMock);
   const tasks = new TasksService(prisma);
   try {
     const system = await db.user.findFirst({ where: { role: Role.SYSTEM } });
@@ -82,6 +98,31 @@ async function main() {
     assert.equal((await marketing.one(actorA,campaign.id)).contacts.length,1);
     assert.equal((await marketing.summary(actorA)).participants,1);
     assert.equal((await marketing.summary(actorB)).total,0);
+    await assert.rejects(
+      ()=>leads.publicCampaign(campaign.captureToken),/Formulário indisponível/
+    );
+    await marketing.update(actorA,campaign.id,{captureEnabled:true});
+    assert.equal((await leads.publicCampaign(campaign.captureToken)).name,'Campanha de Teste A');
+    const submission={
+      name:'Contato isolado A',email:'teste@empresa-a.test',consent:true,
+      utm_source:'instagram',utm_medium:'social',utm_campaign:'primavera',
+    };
+    await leads.capture(campaign.captureToken,submission,'192.0.2.10');
+    await leads.capture(campaign.captureToken,submission,'192.0.2.10');
+    assert.equal((await marketing.metrics(actorA,campaign.id)).capturedLeads,1);
+    assert.equal((await marketing.metrics(actorA,campaign.id)).costPerCapturedLead,'125.50');
+    assert.equal((await crm.contacts(actorA)).total,3);
+    const recorded=await db.marketingLeadCapture.findFirstOrThrow({where:{tenantId:a.id,campaignId:campaign.id}});
+    assert.equal(recorded.utmCampaign,'primavera');
+    await assert.rejects(
+      ()=>leads.capture(campaign.captureToken,{...submission,consent:false},'192.0.2.11'),
+      /consentimento/
+    );
+    await marketing.update(actorA,campaign.id,{captureEnabled:false});
+    await assert.rejects(
+      ()=>leads.capture(campaign.captureToken,submission,'192.0.2.11'),
+      /Formulário indisponível/
+    );
     await assert.rejects(()=>marketing.create({...actorA,role:'COLABORADOR'},{name:'Sem permissão',channel:'EMAIL'}),/Apenas administradores e gestores/);
     const opportunityA = await crm.createOpportunity(actorA, { title: 'Proposta A', contactId: contactA.id });
     const opportunityB = await crm.createOpportunity(actorB, { title: 'Proposta B', contactId: contactB.id });
@@ -135,6 +176,10 @@ async function main() {
 
     const legacyCampaign=await db.marketingCampaign.create({data:{tenantId:legacyId,name:'Campanha legado',channel:'EMAIL'}});
     await db.marketingCampaignContact.create({data:{tenantId:legacyId,campaignId:legacyCampaign.id,contactId:legacyContact.id}});
+    const legacyCapture=await db.marketingLeadCapture.create({data:{
+      tenantId:legacyId,campaignId:legacyCampaign.id,contactId:legacyContact.id,
+      consentAt:new Date(),utmSource:'google'
+    }});
     await db.opportunity.update({where:{id:legacyOpportunity.id},data:{campaignId:legacyCampaign.id}});
     const adopted = await tenants.create({
       name: 'Terceiro Andar', slug: 'terceiro-andar-test',
@@ -147,6 +192,7 @@ async function main() {
     assert.equal((await db.contactInteraction.findUniqueOrThrow({where:{id:legacyInteraction.id}})).tenantId,adopted.id);
     assert.equal((await db.marketingCampaign.findUniqueOrThrow({where:{id:legacyCampaign.id}})).tenantId,adopted.id);
     assert.equal((await db.marketingCampaignContact.findFirstOrThrow({where:{campaignId:legacyCampaign.id}})).tenantId,adopted.id);
+    assert.equal((await db.marketingLeadCapture.findUniqueOrThrow({where:{id:legacyCapture.id}})).tenantId,adopted.id);
     assert.equal((await marketing.metrics({...actorA,tenantId:adopted.id},legacyCampaign.id)).opportunities,1);
     assert.equal((await db.opportunityActivity.findFirstOrThrow({ where: { opportunityId: legacyOpportunity.id } })).tenantId, adopted.id);
     assert.equal((await db.commercialTask.findFirstOrThrow({ where: { opportunityId: legacyOpportunity.id } })).tenantId, adopted.id);
