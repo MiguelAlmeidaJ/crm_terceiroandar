@@ -5,9 +5,9 @@ import { CurrentUser } from '../auth/auth.guard';
 import { tenantId } from '../auth/tenant.guard';
 
 const campaignFields = {
-  id:true,name:true,description:true,channel:true,status:true,budget:true,spent:true,
+  id:true,name:true,description:true,channel:true,status:true,budget:true,spent:true,captureToken:true,captureEnabled:true,
   startDate:true,endDate:true,createdAt:true,updatedAt:true,
-  _count:{select:{contacts:true,opportunities:true}},
+  _count:{select:{contacts:true,opportunities:true,leadCaptures:true}},
 } as const;
 const statuses=Object.values(MarketingCampaignStatus);
 const channels=Object.values(MarketingChannel);
@@ -70,6 +70,10 @@ export class MarketingService {
     if(spent===null)throw new BadRequestException('Valor gasto obrigatório');
     data.spent=spent;
   }
+  if('captureEnabled' in body){
+   if(typeof body.captureEnabled!=='boolean')throw new BadRequestException('Captura pública inválida');
+   data.captureEnabled=body.captureEnabled;
+  }
   if('startDate' in body)data.startDate=this.date(body.startDate);
   if('endDate' in body)data.endDate=this.date(body.endDate);
   return data;
@@ -94,14 +98,15 @@ export class MarketingService {
  }
  async summary(user:CurrentUser) {
   const where={tenantId:tenantId(user)};
-  const [total,active,budget,participants,byChannel]=await Promise.all([
+  const [total,active,budget,participants,capturedLeads,byChannel]=await Promise.all([
    this.prisma.marketingCampaign.count({where}),
    this.prisma.marketingCampaign.count({where:{...where,status:MarketingCampaignStatus.EM_ANDAMENTO}}),
    this.prisma.marketingCampaign.aggregate({where,_sum:{budget:true,spent:true}}),
    this.prisma.marketingCampaignContact.count({where}),
+   this.prisma.marketingLeadCapture.count({where}),
    this.prisma.marketingCampaign.groupBy({by:['channel'],where,_count:{_all:true}}),
   ]);
-  return {total,active,participants,budget:budget._sum.budget?.toString()??'0',spent:budget._sum.spent?.toString()??'0',
+  return {total,active,participants,capturedLeads,budget:budget._sum.budget?.toString()??'0',spent:budget._sum.spent?.toString()??'0',
    byChannel:byChannel.map(item=>({channel:item.channel,count:item._count._all}))};
  }
  private percentage(a:number,b:number):number|null{return b?Math.round(a/b*1000)/10:null;}
@@ -109,7 +114,7 @@ export class MarketingService {
  async metrics(user:CurrentUser,id:string){
   const company=tenantId(user);
   const campaign=await this.prisma.marketingCampaign.findFirst({
-   where:{id,tenantId:company},select:{spent:true,_count:{select:{contacts:true}}}
+   where:{id,tenantId:company},select:{spent:true,_count:{select:{contacts:true,leadCaptures:true}}}
   });
   if(!campaign)throw new NotFoundException('Campanha não encontrada');
   const [groups,wonAmount]=await Promise.all([
@@ -120,11 +125,12 @@ export class MarketingService {
   const opportunities=groups.reduce((a,b)=>a+b._count._all,0);
   const won=count(OpportunityStage.GANHO),lost=count(OpportunityStage.PERDIDO);
   return {
-   campaignId:id,linkedContacts:campaign._count.contacts,opportunities,won,lost,open:opportunities-won-lost,
+   campaignId:id,linkedContacts:campaign._count.contacts,capturedLeads:campaign._count.leadCaptures,opportunities,won,lost,open:opportunities-won-lost,
    opportunityWinRate:this.percentage(won,won+lost),
    opportunityConversionRate:this.percentage(won,opportunities),
    contactToOpportunityRate:this.percentage(opportunities,campaign._count.contacts),
    costPerLinkedContact:this.unitCost(campaign.spent,campaign._count.contacts),
+   costPerCapturedLead:this.unitCost(campaign.spent,campaign._count.leadCaptures),
    costPerOpportunity:this.unitCost(campaign.spent,opportunities),
    costPerWon:this.unitCost(campaign.spent,won),
    spent:campaign.spent.toString(),wonOpportunityValue:wonAmount._sum.value?.toString()??'0',
@@ -207,13 +213,14 @@ export class MarketingService {
  }
  async create(user:CurrentUser,input:unknown){
   this.manager(user);
-  const body=this.input(input,['name','description','channel','status','budget','spent','startDate','endDate']);
+  const body=this.input(input,['name','description','channel','status','budget','spent','startDate','endDate','captureEnabled']);
   if(!('name' in body)||!('channel' in body))throw new BadRequestException('Nome e canal são obrigatórios');
   const data=this.data(body);
   this.checkDates(data.startDate as Date|null|undefined,data.endDate as Date|null|undefined);
   return this.prisma.marketingCampaign.create({
    data:{tenantId:tenantId(user),name:data.name as string,channel:data.channel as MarketingChannel,
     ...(data.description!==undefined?{description:data.description as string|null}:{}),
+    ...(data.captureEnabled!==undefined?{captureEnabled:data.captureEnabled as boolean}:{}),
     ...(data.status!==undefined?{status:data.status as MarketingCampaignStatus}:{}),
     ...(data.budget!==undefined?{budget:data.budget as Prisma.Decimal|null}:{}),
     ...(data.spent!==undefined?{spent:data.spent as Prisma.Decimal}:{}),
