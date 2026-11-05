@@ -1,11 +1,12 @@
-CREATE TYPE "Role" AS ENUM ('ADMIN', 'GESTOR', 'COLABORADOR');
-
-CREATE TABLE "system_events" (
-  "id" TEXT NOT NULL,
-  "name" TEXT NOT NULL,
-  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "system_events_pkey" PRIMARY KEY ("id")
-);
+-- Auth migration: system_events was created by 20261105135749_init.
+-- The enum may already exist if a previous attempt partially applied.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'Role' AND typnamespace = 'public'::regnamespace) THEN
+    CREATE TYPE "Role" AS ENUM ('ADMIN', 'GESTOR', 'COLABORADOR');
+  END IF;
+END
+$$;
 
 CREATE TABLE "users" (
   "id" TEXT NOT NULL,
