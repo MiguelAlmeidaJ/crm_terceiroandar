@@ -104,6 +104,96 @@ export class MarketingService {
   return {total,active,participants,budget:budget._sum.budget?.toString()??'0',spent:budget._sum.spent?.toString()??'0',
    byChannel:byChannel.map(item=>({channel:item.channel,count:item._count._all}))};
  }
+ private percentage(a:number,b:number):number|null{return b?Math.round(a/b*1000)/10:null;}
+ private unitCost(amount:Prisma.Decimal,count:number):string|null{return count?amount.div(count).toDecimalPlaces(2).toString():null;}
+ async metrics(user:CurrentUser,id:string){
+  const company=tenantId(user);
+  const campaign=await this.prisma.marketingCampaign.findFirst({
+   where:{id,tenantId:company},select:{spent:true,_count:{select:{contacts:true}}}
+  });
+  if(!campaign)throw new NotFoundException('Campanha não encontrada');
+  const [groups,wonAmount]=await Promise.all([
+   this.prisma.opportunity.groupBy({by:['stage'],where:{tenantId:company,campaignId:id},_count:{_all:true}}),
+   this.prisma.opportunity.aggregate({where:{tenantId:company,campaignId:id,stage:OpportunityStage.GANHO},_sum:{value:true}}),
+  ]);
+  const count=(stage:OpportunityStage)=>groups.find(g=>g.stage===stage)?._count._all??0;
+  const opportunities=groups.reduce((a,b)=>a+b._count._all,0);
+  const won=count(OpportunityStage.GANHO),lost=count(OpportunityStage.PERDIDO);
+  return {
+   campaignId:id,linkedContacts:campaign._count.contacts,opportunities,won,lost,open:opportunities-won-lost,
+   opportunityWinRate:this.percentage(won,won+lost),
+   opportunityConversionRate:this.percentage(won,opportunities),
+   contactToOpportunityRate:this.percentage(opportunities,campaign._count.contacts),
+   costPerLinkedContact:this.unitCost(campaign.spent,campaign._count.contacts),
+   costPerOpportunity:this.unitCost(campaign.spent,opportunities),
+   costPerWon:this.unitCost(campaign.spent,won),
+   spent:campaign.spent.toString(),wonOpportunityValue:wonAmount._sum.value?.toString()??'0',
+   note:'Contatos e oportunidades associados manualmente. Oportunidades ganhas não comprovam receita recebida.',
+  };
+ }
+ async channelReport(user:CurrentUser){
+  const company=tenantId(user);
+  const [campaigns,groups]=await Promise.all([
+   this.prisma.marketingCampaign.findMany({where:{tenantId:company},select:{
+     id:true,channel:true,spent:true,_count:{select:{contacts:true,opportunities:true}},
+   }}),
+   this.prisma.opportunity.groupBy({by:['campaignId','stage'],where:{tenantId:company,campaignId:{not:null}},_count:{_all:true}}),
+  ]);
+  const byChannel=new Map<MarketingChannel,{channel:MarketingChannel;campaigns:number;linkedContacts:number;opportunities:number;won:number;lost:number;spent:Prisma.Decimal}>();
+  for(const campaign of campaigns){
+   const row=byChannel.get(campaign.channel)??{
+    channel:campaign.channel,campaigns:0,linkedContacts:0,opportunities:0,won:0,lost:0,spent:new Prisma.Decimal(0)
+   };
+   row.campaigns++;
+   row.linkedContacts+=campaign._count.contacts;
+   row.opportunities+=campaign._count.opportunities;
+   row.spent=row.spent.plus(campaign.spent);
+   for(const group of groups.filter(g=>g.campaignId===campaign.id)){
+    if(group.stage===OpportunityStage.GANHO)row.won+=group._count._all;
+    if(group.stage===OpportunityStage.PERDIDO)row.lost+=group._count._all;
+   }
+   byChannel.set(campaign.channel,row);
+  }
+  return Array.from(byChannel.values()).map(row=>({
+   channel:row.channel,campaigns:row.campaigns,linkedContacts:row.linkedContacts,
+   opportunities:row.opportunities,won:row.won,lost:row.lost,spent:row.spent.toString(),
+   costPerLinkedContact:this.unitCost(row.spent,row.linkedContacts),
+   costPerOpportunity:this.unitCost(row.spent,row.opportunities),
+   winRate:this.percentage(row.won,row.won+row.lost),
+  })).sort((a,b)=>b.campaigns-a.campaigns);
+ }
+ async linkOpportunity(user:CurrentUser,id:string,input:unknown){
+  this.manager(user);
+  const body=this.input(input,['opportunityId']);
+  const opportunityId=this.text(body.opportunityId,'Oportunidade',100);
+  const company=tenantId(user);
+  return this.prisma.$transaction(async tx=>{
+   const campaign=await tx.marketingCampaign.findFirst({where:{id,tenantId:company},select:{id:true}});
+   if(!campaign)throw new NotFoundException('Campanha não encontrada');
+   const opportunity=await tx.opportunity.findFirst({where:{id:opportunityId,tenantId:company},select:{id:true,title:true,campaignId:true,contactId:true}});
+   if(!opportunity)throw new BadRequestException('Oportunidade não encontrada nesta empresa');
+   if(opportunity.campaignId&&opportunity.campaignId!==id)throw new ConflictException('Oportunidade já atribuída a outra campanha');
+   const changed=await tx.opportunity.updateMany({
+    where:{id:opportunityId,tenantId:company,OR:[{campaignId:null},{campaignId:id}]},data:{campaignId:id},
+   });
+   if(changed.count!==1)throw new ConflictException('Oportunidade atribuída a outra campanha');
+   await tx.marketingCampaignContact.upsert({
+    where:{campaignId_contactId:{campaignId:id,contactId:opportunity.contactId}},
+    create:{tenantId:company,campaignId:id,contactId:opportunity.contactId},update:{},
+   });
+   return {id:opportunityId,title:opportunity.title,campaignId:id};
+  });
+ }
+ async unlinkOpportunity(user:CurrentUser,id:string,opportunityId:string){
+  this.manager(user);
+  const company=tenantId(user);
+  const changed=await this.prisma.opportunity.updateMany({
+   where:{id:opportunityId,tenantId:company,campaignId:id},data:{campaignId:null},
+  });
+  if(!changed.count)throw new NotFoundException('Atribuição não encontrada');
+  return {success:true};
+ }
+
  async one(user:CurrentUser,id:string) {
   const campaign=await this.prisma.marketingCampaign.findFirst({
    where:{id,tenantId:tenantId(user)},
