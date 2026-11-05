@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AppShell } from '@/components/app-shell';
 import { useRouter } from 'next/navigation';
 
 const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -85,12 +86,8 @@ export default function UsersPage() {
   if (loading) return <main className="loading-screen">Carregando usuários...</main>;
   if (!me) return <main className="loading-screen"><p>{error || 'Verificando acesso...'}</p></main>;
 
-  return <div className="admin-shell">
-    <aside className="admin-sidebar">
-      <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
-      <nav aria-label="Navegação"><Link href="/">Visão geral</Link><Link href="/admin/usuarios" aria-current="page">Usuários</Link></nav>
-      <span className="sidebar-foot">{me.name} · Administrador</span>
-    </aside>
+  return <AppShell user={me}>
+    
     <main className="admin-main">
       <div className="admin-top"><div><p className="eyebrow">CONFIGURAÇÕES / ACESSOS</p><h1>Gestão de usuários</h1><p className="subtitle">Controle quem acessa o sistema e seus perfis.</p></div><Link href="/" className="back-link">Voltar ao painel</Link></div>
       {notice && <p className="admin-notice" role="status">{notice}</p>}
@@ -113,5 +110,5 @@ export default function UsersPage() {
         {audit.length === 0 ? <p className="subtitle">Nenhuma alteração registrada ainda.</p> : <div className="table-overflow"><table><thead><tr><th>Data</th><th>Responsável</th><th>Ação</th></tr></thead><tbody>{audit.map(a => <tr key={a.id}><td>{new Date(a.createdAt).toLocaleString('pt-BR')}</td><td>{a.actor.name}</td><td>{a.action === 'USER_CREATED' ? 'Cadastro de usuário' : 'Edição de usuário'}</td></tr>)}</tbody></table></div>}
       </section>
     </main>
-  </div>;
+  </AppShell>;
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AppShell } from '@/components/app-shell';
 import { useRouter } from 'next/navigation';
 import './comercial.css';
 
@@ -73,19 +74,8 @@ export default function CommercialDashboardPage() {
   if (loading || !user) return <main className="loading-screen">{error || 'Carregando indicadores...'}</main>;
   const kpis = data?.kpis;
   const maximum = Math.max(1, ...(data?.stages.map(stage => stage.count) ?? [0]));
-  return <div className="commercial-shell">
-    <aside className="commercial-sidebar">
-      <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
-      <nav aria-label="Menu principal">
-        <Link href="/">Visão geral</Link>
-        <Link href="/dashboard/comercial" aria-current="page">Dashboard comercial</Link>
-        <Link href="/relacionamento">Relacionamento</Link>
-        <Link href="/relacionamento/kanban">Funil Kanban</Link>
-        <Link href="/tarefas">Tarefas</Link>
-        {user.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
-      </nav>
-      <p className="sidebar-foot">{user.name} · Ambiente beta</p>
-    </aside>
+  return <AppShell user={user}>
+    
     <main className="commercial-main">
       <div className="commercial-heading">
         <div><p className="eyebrow">INDICADORES / COMERCIAL</p><h1>Dashboard comercial</h1><p className="subtitle">Acompanhe o funil, o desempenho e as pendências de sua operação.</p></div>
@@ -139,5 +129,5 @@ export default function CommercialDashboardPage() {
         </tbody></table>{data?.performance.length === 0 && <p className="commercial-empty">Sem oportunidades para o filtro selecionado.</p>}</div>
       </section>}
     </main>
-  </div>;
+  </AppShell>;
 }

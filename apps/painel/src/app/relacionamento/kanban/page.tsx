@@ -2,6 +2,7 @@
 
 import { DragEvent, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AppShell } from '@/components/app-shell';
 import { useRouter } from 'next/navigation';
 import './kanban.css';
 
@@ -98,17 +99,8 @@ export default function KanbanPage() {
   }
   if (loading || !me) return <main className="loading-screen">Carregando funil...</main>;
 
-  return <div className="kanban-shell">
-    <aside className="kanban-sidebar">
-      <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
-      <nav aria-label="Menu principal">
-        <Link href="/">Visão geral</Link>
-        <Link href="/relacionamento">Relacionamento</Link>
-        <Link href="/relacionamento/kanban" aria-current="page">Funil Kanban</Link><Link href="/tarefas">Tarefas comerciais</Link>
-        {me.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
-      </nav>
-      <p className="sidebar-foot">{me.name} · Ambiente beta</p>
-    </aside>
+  return <AppShell user={me}>
+    
     <main className="kanban-main">
       <div className="kanban-heading"><div><p className="eyebrow">CRM / RELACIONAMENTO</p><h1>Funil de oportunidades</h1><p className="subtitle">Arraste cartões entre etapas ou use o seletor de etapa em cada oportunidade.</p></div><Link href="/relacionamento" className="kanban-link">Voltar aos cadastros</Link></div>
       <div className="kanban-toolbar">
@@ -151,5 +143,5 @@ export default function KanbanPage() {
         <p className="kanban-note">Movimentações são registradas no histórico de atividades da oportunidade. O quadro exibe até {board.limitPerColumn} oportunidades por etapa.</p>
       </>}
     </main>
-  </div>;
+  </AppShell>;
 }

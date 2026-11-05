@@ -3,16 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AppShell } from '@/components/app-shell';
 
 type User = { id: string; name: string; email: string; role: 'ADMIN' | 'GESTOR' | 'COLABORADOR' };
 type Summary = { users: number; activeUsers: number; events: number };
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 const modules = [
-  { title: 'Visão geral', description: 'Indicadores e acompanhamento de resultados.' },
-  { title: 'Relacionamento', description: 'Contatos, oportunidades e histórico.' },
-  { title: 'Marketing', description: 'Campanhas, canais e conversões.' },
-  { title: 'Processos', description: 'Fluxos, tarefas e atividades.' },
+  { title: 'Dashboard comercial', description: 'Indicadores, oportunidades e desempenho.', href: '/dashboard/comercial' },
+  { title: 'Relacionamento', description: 'Contatos, oportunidades e histórico.', href: '/relacionamento' },
+  { title: 'Funil Kanban', description: 'Acompanhe cada etapa das oportunidades.', href: '/relacionamento/kanban' },
+  { title: 'Tarefas comerciais', description: 'Prazos e atividades sob controle.', href: '/tarefas' },
 ];
 const roleNames = { ADMIN: 'Administrador', GESTOR: 'Gestor', COLABORADOR: 'Colaborador' };
 
@@ -51,29 +52,18 @@ export default function Home() {
   if (loading || !user) return <main className="loading-screen" aria-live="polite">Carregando ambiente...</main>;
 
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
-        <nav aria-label="Menu principal">
-          <a href="/" aria-current="page">Visão geral</a>
-          <Link href="/dashboard/comercial">Dashboard comercial</Link>
-          <Link href="/relacionamento">Relacionamento</Link>
-          <span>Marketing</span>
-          <Link href="/tarefas">Tarefas comerciais</Link>
-          {user.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
-        </nav>
-        <div className="sidebar-foot"><p>{user.name}</p><p>{roleNames[user.role]}</p><button className="logout-button" onClick={logout}>Sair</button></div>
-      </aside>
+    <AppShell user={user}>
+      
       <main className="main">
-        <header><div><p className="eyebrow">PAINEL / INÍCIO</p><h1>Bem-vindo, {user.name}</h1><p className="subtitle">Sua operação, organizada em um só lugar.</p></div><span className="status">● Beta</span></header>
-        <section className="hero"><div><p className="eyebrow">VISÃO GERAL</p><h2>Uma plataforma pronta para evoluir.</h2><p>Seu ambiente está protegido por autenticação. Os módulos de negócio serão implementados nas próximas etapas.</p></div><span className="hero-icon">3A</span></section>
+        <header><div><p className="eyebrow">PAINEL / INÍCIO</p><h1>Bem-vindo, {user.name}</h1><p className="subtitle">Sua operação, organizada em um só lugar.</p></div><span className="status">● Sistema ativo</span></header>
+        <section className="hero"><div><p className="eyebrow">VISÃO GERAL</p><h2>Seu negócio, em movimento.</h2><p>Acompanhe oportunidades, mantenha os relacionamentos próximos e organize as prioridades da sua equipe em um único lugar.</p></div><span className="hero-icon">3A</span></section>
         <section aria-label="Indicadores do ambiente" className="metrics">
           <article className="metric"><span>Usuários cadastrados</span><strong>{summary?.users ?? '—'}</strong></article>
           <article className="metric"><span>Usuários ativos</span><strong>{summary?.activeUsers ?? '—'}</strong></article>
           <article className="metric"><span>Eventos registrados</span><strong>{summary?.events ?? '—'}</strong></article>
         </section>
-        <section aria-labelledby="modules-title"><div className="section-title"><h2 id="modules-title">Áreas do sistema</h2><p>Estrutura prevista para o desenvolvimento</p></div><div className="cards">{modules.map((module, index) => <article className="card" key={module.title}><div className="card-number">0{index + 1}</div><h3>{module.title}</h3><p>{module.description}</p><span className="pending">Em preparação</span></article>)}</div></section>
+        <section aria-labelledby="modules-title"><div className="section-title"><h2 id="modules-title">Áreas do sistema</h2><p>Acesse rapidamente as principais áreas do seu CRM</p></div><div className="cards">{modules.map((module, index) => <Link className="card ta-home-tile" href={module.href} key={module.title}><div className="card-number">0{index + 1}</div><h3>{module.title}</h3><p>{module.description}</p><span className="pending">Acessar módulo →</span></Link>)}</div></section>
       </main>
-    </div>
+    </AppShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AppShell } from '@/components/app-shell';
 import { useRouter } from 'next/navigation';
 import './tarefas.css';
 
@@ -130,18 +131,8 @@ export default function TarefasPage() {
 
   if (loading || !me) return <main className="loading-screen">Carregando tarefas...</main>;
 
-  return <div className="tasks-shell">
-    <aside className="tasks-sidebar">
-      <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
-      <nav aria-label="Menu principal">
-        <Link href="/">Visão geral</Link>
-        <Link href="/relacionamento">Relacionamento</Link>
-        <Link href="/relacionamento/kanban">Funil Kanban</Link>
-        <Link href="/tarefas" aria-current="page">Tarefas comerciais</Link>
-        {me.role === 'ADMIN' && <Link href="/admin/usuarios">Usuários e acessos</Link>}
-      </nav>
-      <p className="sidebar-foot">{me.name} · Ambiente beta</p>
-    </aside>
+  return <AppShell user={me}>
+    
     <main className="tasks-main">
       <div className="tasks-header"><div><p className="eyebrow">CRM / ATIVIDADES</p><h1>Tarefas comerciais</h1><p className="subtitle">Organize compromissos vinculados às oportunidades.</p></div><Link href="/relacionamento/kanban" className="tasks-back">Abrir funil Kanban</Link></div>
       <section className="tasks-metrics" aria-label="Indicadores de tarefas">
@@ -193,5 +184,5 @@ export default function TarefasPage() {
         <div className="tasks-pages"><button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Anterior</button><span>Página {page} de {Math.max(tasks.pages, 1)}</span><button disabled={page >= tasks.pages} onClick={() => setPage(p => p + 1)}>Próxima</button></div>
       </section>
     </main>
-  </div>;
+  </AppShell>;
 }
