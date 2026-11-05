@@ -5,6 +5,7 @@ import { PrismaService } from '../src/infra/prisma/prisma.service';
 import { TenantsService } from '../src/tenants/tenants.service';
 import { CrmService } from '../src/crm/crm.service';
 import { ContactsImportService } from '../src/crm/contacts-import.service';
+import { MarketingService } from '../src/marketing/marketing.service';
 import { TasksService } from '../src/tasks/tasks.service';
 import { tenantId } from '../src/auth/tenant.guard';
 import { CurrentUser } from '../src/auth/auth.guard';
@@ -18,6 +19,7 @@ async function main() {
   const tenants = new TenantsService(prisma);
   const crm = new CrmService(prisma);
   const importer = new ContactsImportService(prisma);
+  const marketing = new MarketingService(prisma);
   const tasks = new TasksService(prisma);
   try {
     const system = await db.user.findFirst({ where: { role: Role.SYSTEM } });
@@ -69,6 +71,18 @@ async function main() {
     const rerun=await importer.run(actorA,fileRows);
     assert.equal(rerun.imported,0);
     assert.equal(rerun.duplicates,4);
+    const campaign = await marketing.create(actorA,{name:'Campanha de Teste A',channel:'INSTAGRAM',status:'EM_ANDAMENTO',budget:'1200.00',spent:'125.50'});
+    assert.equal((await marketing.list(actorA)).total,1);
+    assert.equal((await marketing.list(actorB)).total,0);
+    await assert.rejects(()=>marketing.one(actorB,campaign.id),/Campanha não encontrada/);
+    await assert.rejects(()=>marketing.linkContact(actorA,campaign.id,{contactId:contactB.id}),/Contato não encontrado/);
+    await assert.rejects(()=>marketing.linkContact(actorB,campaign.id,{contactId:contactB.id}),/Campanha não encontrada/);
+    await marketing.linkContact(actorA,campaign.id,{contactId:contactA.id});
+    await assert.rejects(()=>marketing.linkContact(actorA,campaign.id,{contactId:contactA.id}),/Contato já vinculado/);
+    assert.equal((await marketing.one(actorA,campaign.id)).contacts.length,1);
+    assert.equal((await marketing.summary(actorA)).participants,1);
+    assert.equal((await marketing.summary(actorB)).total,0);
+    await assert.rejects(()=>marketing.create({...actorA,role:'COLABORADOR'},{name:'Sem permissão',channel:'EMAIL'}),/Apenas administradores e gestores/);
     const opportunityA = await crm.createOpportunity(actorA, { title: 'Proposta A', contactId: contactA.id });
     const opportunityB = await crm.createOpportunity(actorB, { title: 'Proposta B', contactId: contactB.id });
     await assert.rejects(() => crm.activities(actorA, opportunityB.id), /Oportunidade não encontrada/);
