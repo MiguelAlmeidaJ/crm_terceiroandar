@@ -85,6 +85,24 @@ async function main() {
     await assert.rejects(()=>marketing.create({...actorA,role:'COLABORADOR'},{name:'Sem permissão',channel:'EMAIL'}),/Apenas administradores e gestores/);
     const opportunityA = await crm.createOpportunity(actorA, { title: 'Proposta A', contactId: contactA.id });
     const opportunityB = await crm.createOpportunity(actorB, { title: 'Proposta B', contactId: contactB.id });
+    await assert.rejects(()=>marketing.linkOpportunity(actorA,campaign.id,{opportunityId:opportunityB.id}),/Oportunidade não encontrada/);
+    await assert.rejects(()=>marketing.linkOpportunity(actorB,campaign.id,{opportunityId:opportunityB.id}),/Campanha não encontrada/);
+    await marketing.linkOpportunity(actorA,campaign.id,{opportunityId:opportunityA.id});
+    const firstMetrics=await marketing.metrics(actorA,campaign.id);
+    assert.equal(firstMetrics.linkedContacts,1);
+    assert.equal(firstMetrics.opportunities,1);
+    assert.equal(firstMetrics.costPerLinkedContact,'125.50');
+    assert.equal(firstMetrics.opportunityWinRate,null);
+    assert.equal((await marketing.channelReport(actorA))[0].opportunities,1);
+    assert.equal((await marketing.channelReport(actorB)).length,0);
+    await crm.updateOpportunity(actorA,opportunityA.id,{stage:'GANHO'});
+    const conversion=await marketing.metrics(actorA,campaign.id);
+    assert.equal(conversion.won,1);
+    assert.equal(conversion.opportunityWinRate,100);
+    assert.equal(conversion.costPerWon,'125.50');
+    await marketing.unlinkOpportunity(actorA,campaign.id,opportunityA.id);
+    assert.equal((await marketing.metrics(actorA,campaign.id)).opportunities,0);
+    await marketing.linkOpportunity(actorA,campaign.id,{opportunityId:opportunityA.id});
     await assert.rejects(() => crm.activities(actorA, opportunityB.id), /Oportunidade não encontrada/);
     await assert.rejects(() => crm.addActivity(actorA, opportunityB.id, { message: 'Invasão' }), /Oportunidade não encontrada/);
     await assert.rejects(() => crm.updateOpportunity(actorA, opportunityA.id, {ownerId:adminB.id}), /Responsável inválido/);
@@ -115,6 +133,9 @@ async function main() {
       assigneeId: legacyUser.id, creatorId: legacyUser.id, dueDate: new Date('2026-12-01T00:00:00Z'),
     } });
 
+    const legacyCampaign=await db.marketingCampaign.create({data:{tenantId:legacyId,name:'Campanha legado',channel:'EMAIL'}});
+    await db.marketingCampaignContact.create({data:{tenantId:legacyId,campaignId:legacyCampaign.id,contactId:legacyContact.id}});
+    await db.opportunity.update({where:{id:legacyOpportunity.id},data:{campaignId:legacyCampaign.id}});
     const adopted = await tenants.create({
       name: 'Terceiro Andar', slug: 'terceiro-andar-test',
       adminName: 'Admin novo', adminEmail: 'novo@example.test',
@@ -124,6 +145,9 @@ async function main() {
     assert.equal((await db.contact.findUniqueOrThrow({ where: { id: legacyContact.id } })).tenantId, adopted.id);
     assert.equal((await db.opportunity.findUniqueOrThrow({ where: { id: legacyOpportunity.id } })).tenantId, adopted.id);
     assert.equal((await db.contactInteraction.findUniqueOrThrow({where:{id:legacyInteraction.id}})).tenantId,adopted.id);
+    assert.equal((await db.marketingCampaign.findUniqueOrThrow({where:{id:legacyCampaign.id}})).tenantId,adopted.id);
+    assert.equal((await db.marketingCampaignContact.findFirstOrThrow({where:{campaignId:legacyCampaign.id}})).tenantId,adopted.id);
+    assert.equal((await marketing.metrics({...actorA,tenantId:adopted.id},legacyCampaign.id)).opportunities,1);
     assert.equal((await db.opportunityActivity.findFirstOrThrow({ where: { opportunityId: legacyOpportunity.id } })).tenantId, adopted.id);
     assert.equal((await db.commercialTask.findFirstOrThrow({ where: { opportunityId: legacyOpportunity.id } })).tenantId, adopted.id);
     assert.equal((await db.user.findUniqueOrThrow({ where: { id: legacyUser.id } })).sessionVersion, legacyUser.sessionVersion + 1);
