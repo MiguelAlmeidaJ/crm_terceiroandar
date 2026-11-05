@@ -31,7 +31,7 @@ const sections = [
   { heading:'GESTÃO COMERCIAL', links:[['/relacionamento','Relacionamento','users'],['/relacionamento/kanban','Funil Kanban','kanban'],['/tarefas','Tarefas comerciais','tasks']] },
   { heading:'CONFIGURAÇÕES', links:[['/admin/usuarios','Usuários e acessos','settings']] },
 ];
-const systemSections = [{ heading:'PLATAFORMA', links:[['/system/empresas','Empresas e licenças','settings']] }];
+const systemSections = [{ heading:'PLATAFORMA', links:[['/system/empresas','Empresas','settings']] }];
 export function AppShell({user,children}:{user:ShellUser;children:ReactNode}) {
   const route = usePathname();
   const router = useRouter();

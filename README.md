@@ -77,3 +77,9 @@ Acesse http://localhost:3000/login. O login define cookie HttpOnly com sessão J
 Papéis previstos no banco: `ADMIN`, `GESTOR`, `COLABORADOR`. A implementação inicial restringe a interface de configurações ao ADMIN, mas **não oferece ainda CRUD de usuários nem autorização RBAC granular**. As áreas sem implementação não são links funcionais.
 
 **Importante:** para produção, configurar HTTPS, proxy reverso, segredos fortes, limitação de requisições no login, proteção CSRF quando necessário, auditoria e estratégia de revogação de sessões. Não utilizar credenciais do exemplo. Não há testes automatizados dessa fase ainda.
+
+## Multiempresa (Fase 9)
+
+O CRM agora possui papel `SYSTEM`, cadastro de empresas e isolamento de registros por empresa. Os dados atuais são preservados na empresa Legado; o administrador SYSTEM pode criar a empresa definitiva, definir um novo administrador e transferir todos os dados legados de forma explícita. **Faça backup antes de executar `npm run db:deploy`**.
+
+Consulte [guia de migração e uso multiempresa](docs/phase-9-multitenant.md).
