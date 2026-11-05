@@ -11,7 +11,8 @@
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev --name init",
     "prisma:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "prisma:studio": "dotenv -e ../../.env -- prisma studio",
-    "seed:admin": "dotenv -e ../../.env -- ts-node prisma/seed.ts"
+    "seed:admin": "dotenv -e ../../.env -- ts-node prisma/seed.ts",
+    "test:tenancy": "dotenv -e ../../.env -- ts-node prisma/test-multitenant.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",
