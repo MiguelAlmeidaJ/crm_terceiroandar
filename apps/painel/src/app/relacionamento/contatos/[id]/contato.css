@@ -1,0 +1,24 @@
+.contact-details{max-width:1450px;margin:auto;padding:38px 42px;min-width:0}
+.contact-breadcrumb{font-size:12px;color:var(--muted);margin-bottom:24px}.contact-breadcrumb a{color:var(--brand-pink);font-weight:700}
+.contact-intro{display:flex;align-items:center;gap:20px;padding:28px;background:var(--ta-surface);border:1px solid var(--ta-line);border-radius:18px;margin-bottom:23px}
+.contact-avatar{width:76px;height:76px;flex:0 0 76px;border-radius:18px;background:#ff004a;color:white;display:grid;place-items:center;font-size:23px;font-weight:900}
+.contact-intro h1{margin:6px 0}.contact-intro p{margin:0;color:var(--muted)}.contact-intro .eyebrow{color:var(--brand-pink)}
+.contact-back{margin-left:auto;padding:11px 15px;border-radius:9px;border:1px solid var(--ta-line);color:var(--ink);font-size:12px;font-weight:700;white-space:nowrap}
+.contact-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.contact-tags span{background:var(--brand-pink-soft);color:#ff004a;border-radius:20px;padding:6px 9px;font-weight:700;font-size:11px}
+.contact-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:19px}.contact-column{min-width:0}
+.contact-panel{background:var(--ta-surface);border:1px solid var(--ta-line);border-radius:15px;padding:26px;margin-bottom:19px}
+.contact-panel h2{font-size:18px;margin:0 0 22px}.contact-fields{display:grid;grid-template-columns:1fr 1fr;gap:23px;margin:0}.contact-fields div{min-width:0}
+.contact-fields dt{color:var(--muted);font-size:11px;margin-bottom:8px}.contact-fields dd{margin:0;font-size:13px;font-weight:700;overflow-wrap:anywhere}.contact-notes{border-top:1px solid var(--ta-line);margin-top:22px;padding-top:20px}.contact-notes strong{font-size:13px}.contact-notes p{white-space:pre-wrap;color:var(--muted);font-size:13px;line-height:1.6}
+.contact-opportunities{display:grid;gap:9px}.contact-opportunities article{display:grid;gap:8px;padding:14px;border:1px solid var(--ta-line);border-radius:10px}.contact-opportunities article strong{font-size:13px}.contact-opportunities article span{font-size:12px;color:#ff004a;font-weight:700}.contact-opportunities article small{font-size:11px;color:var(--muted)}
+.contact-muted,.contact-empty{font-size:13px;color:var(--muted);line-height:1.6}
+.contact-interaction-form{display:grid;gap:16px;margin-top:18px}.contact-interaction-form label{display:grid;gap:9px;font-weight:700;font-size:12px}
+.contact-interaction-form select,.contact-interaction-form textarea{width:100%;font:inherit;background:var(--ta-field);color:var(--ink);border:1px solid var(--ta-line);border-radius:9px;padding:12px}
+.contact-interaction-form button{justify-self:start;border:0;border-radius:9px;background:#ff004a;color:white;font-weight:800;padding:12px 17px;cursor:pointer}.contact-interaction-form button:disabled{opacity:.5}
+.contact-timeline{border-left:2px solid var(--ta-line);margin-left:7px}.contact-timeline article{display:flex;gap:16px;position:relative;padding:0 0 22px 0;margin-left:-7px}
+.contact-timeline-dot{width:14px;height:14px;flex:0 0 14px;border:3px solid #ff004a;background:var(--ta-surface);border-radius:50%;margin-top:3px}
+.contact-timeline-top{display:flex;justify-content:space-between;gap:10px;font-size:12px}.contact-timeline-top span{color:var(--muted);font-size:11px}
+.contact-timeline article p{white-space:pre-wrap;font-size:13px;line-height:1.55;margin:9px 0}.contact-timeline article small{font-size:11px;color:var(--muted)}
+.contact-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;font-size:12px;margin-top:17px}
+.contact-pagination button{border:1px solid var(--ta-line);background:var(--ta-field);color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer}.contact-pagination button:disabled{opacity:.4}
+.contact-alert,.contact-success{padding:13px 15px;border-radius:9px;font-size:13px}.contact-alert{background:#fff0f4;color:#aa0033}.contact-success{background:#eaf5ed;color:#236735}
+@media(max-width:1000px){.contact-layout{grid-template-columns:1fr}}@media(max-width:720px){.contact-details{padding:22px 16px}.contact-intro{flex-wrap:wrap;padding:19px}.contact-back{margin-left:0}.contact-panel{padding:19px}}

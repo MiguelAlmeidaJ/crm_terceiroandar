@@ -6,7 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { useRouter } from 'next/navigation';
 
 type Stage = 'NOVO' | 'QUALIFICACAO' | 'PROPOSTA' | 'NEGOCIACAO' | 'GANHO' | 'PERDIDO';
-type Contact = { id: string; name: string; email: string | null; phone: string | null; company: string | null; notes: string | null };
+type Contact = { id: string; name: string; email: string | null; phone: string | null; company: string | null; notes: string | null; jobTitle: string|null; website:string|null; source:string|null; tags:string[] };
 type Opportunity = { id: string; title: string; description: string | null; stage: Stage; value: string | null; contact: { id: string; name: string }; owner: { id: string; name: string } | null; _count: { activities: number } };
 type Activity = { id: string; message: string; createdAt: string; author: { name: string } };
 type Page<T> = { items: T[]; total: number; page: number; pages: number };
@@ -15,7 +15,7 @@ type User = { id: string; name: string; role: string };
 const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const stages: Stage[] = ['NOVO', 'QUALIFICACAO', 'PROPOSTA', 'NEGOCIACAO', 'GANHO', 'PERDIDO'];
 const labels: Record<Stage, string> = { NOVO: 'Novo', QUALIFICACAO: 'Qualificação', PROPOSTA: 'Proposta', NEGOCIACAO: 'Negociação', GANHO: 'Ganho', PERDIDO: 'Perdido' };
-const blankContact = { name: '', email: '', phone: '', company: '', notes: '' };
+const blankContact = { name: '', email: '', phone: '', company: '', notes: '', jobTitle:'',website:'',source:'',tagsText:'' };
 const blankOpportunity = { title: '', contactId: '', description: '', value: '', expectedAt: '' };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -81,7 +81,7 @@ export default function RelacionamentoPage() {
 
   function editContact(contact: Contact) {
     setContactEditing(contact.id);
-    setContactForm({ name: contact.name, email: contact.email || '', phone: contact.phone || '', company: contact.company || '', notes: contact.notes || '' });
+    setContactForm({ name: contact.name, email: contact.email || '', phone: contact.phone || '', company: contact.company || '', notes: contact.notes || '',jobTitle:contact.jobTitle||'',website:contact.website||'',source:contact.source||'',tagsText:contact.tags.join(', ') });
     setTab('contatos'); setError(''); setNotice('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -90,7 +90,7 @@ export default function RelacionamentoPage() {
     try {
       await request(`/crm/contacts${contactEditing ? '/' + contactEditing : ''}`, {
         method: contactEditing ? 'PATCH' : 'POST',
-        body: JSON.stringify(contactForm),
+        body: JSON.stringify({ ...contactForm, tags:contactForm.tagsText.split(',').map(tag=>tag.trim()).filter(Boolean),tagsText:undefined }),
       });
       setContactForm(blankContact); setContactEditing(null); setNotice('Contato salvo com sucesso.');
       await reload();
@@ -158,13 +158,17 @@ export default function RelacionamentoPage() {
             <label>E-mail<input type="email" value={contactForm.email} onChange={e => setContactForm({ ...contactForm, email: e.target.value })}/></label>
             <label>Telefone<input maxLength={30} value={contactForm.phone} onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}/></label>
             <label>Empresa<input maxLength={120} value={contactForm.company} onChange={e => setContactForm({ ...contactForm, company: e.target.value })}/></label>
+            <label>Cargo<input maxLength={120} value={contactForm.jobTitle} onChange={e => setContactForm({ ...contactForm,jobTitle:e.target.value })}/></label>
+            <label>Origem<input maxLength={100} placeholder="Ex.: indicação, Instagram, site" value={contactForm.source} onChange={e => setContactForm({...contactForm,source:e.target.value})}/></label>
+            <label>Website<input maxLength={300} value={contactForm.website} onChange={e => setContactForm({...contactForm,website:e.target.value})}/></label>
+            <label>Etiquetas (separadas por vírgula)<input value={contactForm.tagsText} placeholder="cliente, parceiro, potencial" onChange={e => setContactForm({...contactForm,tagsText:e.target.value})}/></label>
             <label className="crm-wide">Observações<textarea rows={3} maxLength={3000} value={contactForm.notes} onChange={e => setContactForm({ ...contactForm, notes: e.target.value })}/></label>
             <div className="crm-form-actions"><button disabled={busy} type="submit">{busy ? 'Salvando...' : contactEditing ? 'Salvar contato' : 'Cadastrar contato'}</button>{contactEditing && <button className="crm-secondary" type="button" onClick={() => { setContactEditing(null); setContactForm(blankContact); }}>Cancelar edição</button>}</div>
           </form>
         </section>
         <section className="crm-panel"><div className="crm-list-heading"><h2>Contatos ({contacts.total})</h2>
           <form onSubmit={e => { e.preventDefault(); setContactPage(1); setSearch(contactQuery); }} className="crm-search"><input aria-label="Buscar contato" placeholder="Buscar nome, e-mail ou empresa" value={contactQuery} onChange={e => setContactQuery(e.target.value)} /><button type="submit">Buscar</button></form></div>
-          <div className="crm-overflow"><table><thead><tr><th>Nome</th><th>Empresa</th><th>E-mail</th><th>Telefone</th><th>Ação</th></tr></thead><tbody>{contacts.items.map(c => <tr key={c.id}><td>{c.name}</td><td>{c.company || '—'}</td><td>{c.email || '—'}</td><td>{c.phone || '—'}</td><td><button className="crm-inline" onClick={() => editContact(c)}>Editar</button></td></tr>)}</tbody></table>{!contacts.items.length && <p className="crm-empty">Nenhum contato encontrado.</p>}</div>
+          <div className="crm-overflow"><table><thead><tr><th>Nome</th><th>Empresa</th><th>E-mail</th><th>Telefone</th><th>Etiquetas</th><th>Ação</th></tr></thead><tbody>{contacts.items.map(c => <tr key={c.id}><td>{c.name}</td><td>{c.company || '—'}</td><td>{c.email || '—'}</td><td>{c.phone || '—'}</td><td>{c.tags.join(', ')||'—'}</td><td><Link className="crm-inline" href={'/relacionamento/contatos/'+c.id}>Ficha</Link> <button className="crm-inline" onClick={() => editContact(c)}>Editar</button></td></tr>)}</tbody></table>{!contacts.items.length && <p className="crm-empty">Nenhum contato encontrado.</p>}</div>
           <div className="crm-pagination"><button disabled={contactPage <= 1} onClick={() => setContactPage(p => p - 1)}>Anterior</button><span>Página {contactPage} de {Math.max(1, contacts.pages)}</span><button disabled={contactPage >= contacts.pages} onClick={() => setContactPage(p => p + 1)}>Próxima</button></div>
         </section>
       </> : <>
