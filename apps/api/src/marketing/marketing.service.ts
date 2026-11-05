@@ -105,7 +105,7 @@ export class MarketingService {
    byChannel:byChannel.map(item=>({channel:item.channel,count:item._count._all}))};
  }
  private percentage(a:number,b:number):number|null{return b?Math.round(a/b*1000)/10:null;}
- private unitCost(amount:Prisma.Decimal,count:number):string|null{return count?amount.div(count).toDecimalPlaces(2).toString():null;}
+ private unitCost(amount:Prisma.Decimal,count:number):string|null{return count?amount.div(count).toFixed(2):null;}
  async metrics(user:CurrentUser,id:string){
   const company=tenantId(user);
   const campaign=await this.prisma.marketingCampaign.findFirst({
