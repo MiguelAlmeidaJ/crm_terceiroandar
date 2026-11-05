@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException, TooManyRequestsException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { MarketingCampaignStatus, Prisma } from '@prisma/client';
+import { MarketingCampaignStatus } from '@prisma/client';
 import { PrismaService } from '../infra/prisma/prisma.service';
 import { RedisService } from '../infra/redis/redis.service';
 
@@ -26,10 +26,10 @@ export class MarketingLeadService {
     const result=await this.redis.client.multi().incr(key).expire(key,3600,'NX').exec();
     const count=Number(result?.[0]?.[1]);
     if(!Number.isFinite(count))throw new Error('Rate limiter indisponível');
-    if(count>check.limit)throw new TooManyRequestsException('Limite de solicitações excedido. Tente mais tarde.');
+    if(count>check.limit)throw new HttpException('Limite de solicitações excedido. Tente mais tarde.',HttpStatus.TOO_MANY_REQUESTS);
    }
   }catch(error){
-   if(error instanceof TooManyRequestsException)throw error;
+   if(error instanceof HttpException)throw error;
    throw new ServiceUnavailableException('Formulário temporariamente indisponível');
   }
  }
