@@ -56,6 +56,7 @@ export default function Home() {
         <div className="brand"><span className="brand-mark">3A</span><span>Terceiro Andar<small>CRM & Operações</small></span></div>
         <nav aria-label="Menu principal">
           <a href="/" aria-current="page">Visão geral</a>
+          <Link href="/dashboard/comercial">Dashboard comercial</Link>
           <Link href="/relacionamento">Relacionamento</Link>
           <span>Marketing</span>
           <Link href="/tarefas">Tarefas comerciais</Link>
