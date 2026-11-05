@@ -26,6 +26,7 @@ model User {
   name         String
   email        String   @unique
   passwordHash String   @map("password_hash")
+  sessionVersion Int @default(0) @map("session_version")
   role         Role     @default(COLABORADOR)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")

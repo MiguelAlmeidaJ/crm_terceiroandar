@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard, AuthRequest } from './auth.guard';
@@ -25,6 +25,20 @@ export class AuthController {
   @Get('me')
   me(@Req() req: AuthRequest) {
     return { user: req.user };
+  }
+
+  @Patch('profile')
+  @UseGuards(AuthGuard)
+  async updateProfile(@Req() req: AuthRequest, @Body() input: { name?: unknown }) {
+    return { user: await this.auth.updateProfile(req.user!.id, input) };
+  }
+
+  @Post('change-password')
+  @UseGuards(AuthGuard)
+  async changePassword(@Req() req: AuthRequest, @Body() input: { currentPassword?: unknown; newPassword?: unknown }, @Res({ passthrough: true }) res: Response) {
+    const token = await this.auth.changePassword(req.user!.id, input);
+    res.cookie('ta_session', token, { ...cookieOptions(), maxAge: 8 * 60 * 60 * 1000 });
+    return { success: true };
   }
 
   @Post('logout')

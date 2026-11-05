@@ -16,13 +16,13 @@ export class AuthGuard implements CanActivate {
     const secret = process.env.JWT_SECRET;
     if (!token || !secret) throw new UnauthorizedException();
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string }>(token, { secret, algorithms: ['HS256'] });
+      const payload = await this.jwt.verifyAsync<{ sub: string; ver?: number }>(token, { secret, algorithms: ['HS256'] });
       if (!payload.sub) throw new UnauthorizedException();
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, name: true, email: true, role: true, active: true },
+        select: { id: true, name: true, email: true, role: true, active: true, sessionVersion: true },
       });
-      if (!user || !user.active) throw new UnauthorizedException();
+      if (!user || !user.active || payload.ver !== user.sessionVersion) throw new UnauthorizedException();
       request.user = { id: user.id, name: user.name, email: user.email, role: user.role };
       return true;
     } catch {
