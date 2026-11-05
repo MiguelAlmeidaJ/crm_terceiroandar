@@ -1,0 +1,24 @@
+{
+  "name": "terceiroandar-crm",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,painel -c blue,green \"npm run dev -w @terceiroandar/api\" \"npm run dev -w @terceiroandar/painel\"",
+    "build": "npm run build -w @terceiroandar/api && npm run build -w @terceiroandar/painel",
+    "lint": "npm run typecheck -w @terceiroandar/api && npm run typecheck -w @terceiroandar/painel",
+    "db:generate": "npm run prisma:generate -w @terceiroandar/api",
+    "db:migrate": "npm run prisma:migrate -w @terceiroandar/api",
+    "db:deploy": "npm run prisma:deploy -w @terceiroandar/api",
+    "db:studio": "npm run prisma:studio -w @terceiroandar/api",
+    "start:pm2": "pm2 start ecosystem.config.cjs --update-env",
+    "stop:pm2": "pm2 stop ecosystem.config.cjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "pm2": "^6.0.0",
+    "typescript": "^5.9.3"
+  }
+}
