@@ -84,6 +84,7 @@ model Contact {
   tags          String[]       @default([])
   interactions  ContactInteraction[]
   campaignMemberships MarketingCampaignContact[]
+  leadCaptures MarketingLeadCapture[]
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
   opportunities Opportunity[]
@@ -190,6 +191,7 @@ model Tenant {
   contacts Contact[]
   marketingCampaigns MarketingCampaign[]
   marketingCampaignContacts MarketingCampaignContact[]
+  marketingLeadCaptures MarketingLeadCapture[]
   contactInteractions ContactInteraction[]
   opportunities Opportunity[]
   activities OpportunityActivity[]
@@ -260,6 +262,9 @@ model MarketingCampaign {
   updatedAt DateTime @updatedAt @map("updated_at")
   contacts MarketingCampaignContact[]
   opportunities Opportunity[]
+  captureToken String @unique @default(uuid()) @map("capture_token")
+  captureEnabled Boolean @default(false) @map("capture_enabled")
+  leadCaptures MarketingLeadCapture[]
 
   @@index([tenantId,status])
   @@index([tenantId,channel])
@@ -280,4 +285,26 @@ model MarketingCampaignContact {
   @@index([tenantId,campaignId])
   @@index([tenantId,contactId])
   @@map("marketing_campaign_contacts")
+}
+
+model MarketingLeadCapture {
+  id String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Restrict)
+  campaignId String @map("campaign_id")
+  campaign MarketingCampaign @relation(fields:[campaignId],references:[id],onDelete:Restrict)
+  contactId String @map("contact_id")
+  contact Contact @relation(fields:[contactId],references:[id],onDelete:Restrict)
+  utmSource String? @map("utm_source")
+  utmMedium String? @map("utm_medium")
+  utmCampaign String? @map("utm_campaign")
+  utmContent String? @map("utm_content")
+  utmTerm String? @map("utm_term")
+  consentAt DateTime @map("consent_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([campaignId,contactId])
+  @@index([tenantId,createdAt])
+  @@index([tenantId,campaignId])
+  @@map("marketing_lead_captures")
 }
