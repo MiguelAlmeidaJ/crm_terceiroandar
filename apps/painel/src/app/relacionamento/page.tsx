@@ -138,7 +138,7 @@ export default function RelacionamentoPage() {
   return <AppShell user={me}>
     
     <main className="crm-main">
-      <div className="crm-heading"><div><p className="eyebrow">CRM / RELACIONAMENTO</p><h1>Relacionamento</h1><p className="subtitle">Organize seus contatos e acompanhe o funil de oportunidades.</p></div><div className="crm-heading-actions"><Link className="crm-back" href="/relacionamento/kanban">Abrir Kanban</Link> · <Link className="crm-back" href="/">Voltar ao painel</Link></div></div>
+      <div className="crm-heading"><div><p className="eyebrow">CRM / RELACIONAMENTO</p><h1>Relacionamento</h1><p className="subtitle">Organize seus contatos e acompanhe o funil de oportunidades.</p></div><div className="crm-heading-actions"><Link className="crm-back" href="/relacionamento/importar">Importar CSV</Link> · <Link className="crm-back" href="/relacionamento/kanban">Abrir Kanban</Link> · <Link className="crm-back" href="/">Voltar ao painel</Link></div></div>
       <section className="crm-stats" aria-label="Resumo do relacionamento">
         <article><span>Contatos</span><strong>{summary?.contacts ?? '—'}</strong></article>
         <article><span>Oportunidades</span><strong>{summary?.opportunities ?? '—'}</strong></article>
