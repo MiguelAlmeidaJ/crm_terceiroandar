@@ -18,7 +18,7 @@ if (command === 'dev' || command === 'start') {
 }
 
 const next = spawn(process.execPath, args, {
-  env: process.env,
+  env: { ...process.env, NODE_ENV: command === 'build' ? 'production' : process.env.NODE_ENV },
   stdio: 'inherit',
 });
 
