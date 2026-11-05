@@ -4,6 +4,7 @@ import { hash } from 'bcryptjs';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 import { TenantsService } from '../src/tenants/tenants.service';
 import { CrmService } from '../src/crm/crm.service';
+import { ContactsImportService } from '../src/crm/contacts-import.service';
 import { TasksService } from '../src/tasks/tasks.service';
 import { tenantId } from '../src/auth/tenant.guard';
 import { CurrentUser } from '../src/auth/auth.guard';
@@ -16,6 +17,7 @@ async function main() {
   const prisma = db as PrismaService;
   const tenants = new TenantsService(prisma);
   const crm = new CrmService(prisma);
+  const importer = new ContactsImportService(prisma);
   const tasks = new TasksService(prisma);
   try {
     const system = await db.user.findFirst({ where: { role: Role.SYSTEM } });
@@ -51,6 +53,22 @@ async function main() {
     await assert.rejects(() => crm.updateContact(actorA, contactB.id, { name: 'Tentativa indevida' }), /Contato não encontrado/);
     await assert.rejects(() => crm.createOpportunity(actorA, { title: 'Inválida', contactId: contactB.id }), /Contato não encontrado/);
 
+    const fileRows = {rows:[
+      {name:'Importado A',email:'importacao@a.test',phone:'11911112222',tags:'novo|evento'},
+      {name:'Já existe',email:'teste@empresa-a.test'},
+      {name:'Sem nome',email:'ruim@a.test'},
+      {name:'Importado A duplicado',email:'IMPORTACAO@A.TEST'},
+    ]};
+    const preview = await importer.preview(actorA,fileRows);
+    assert.equal(preview.ready,2);
+    assert.equal(preview.duplicates,2);
+    const imported = await importer.run(actorA,fileRows);
+    assert.equal(imported.imported,2);
+    assert.equal((await crm.contacts(actorA)).total,3);
+    assert.equal((await crm.contacts(actorB)).total,1);
+    const rerun=await importer.run(actorA,fileRows);
+    assert.equal(rerun.imported,0);
+    assert.equal(rerun.duplicates,4);
     const opportunityA = await crm.createOpportunity(actorA, { title: 'Proposta A', contactId: contactA.id });
     const opportunityB = await crm.createOpportunity(actorB, { title: 'Proposta B', contactId: contactB.id });
     await assert.rejects(() => crm.activities(actorA, opportunityB.id), /Oportunidade não encontrada/);
