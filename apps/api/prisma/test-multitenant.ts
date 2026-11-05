@@ -28,7 +28,7 @@ async function main() {
     }, system.id);
     const adminA = await db.user.findUniqueOrThrow({ where: { email: 'a@example.test' } });
     const adminB = await db.user.findUniqueOrThrow({ where: { email: 'b@example.test' } });
-    const identity = (u: typeof adminA): CurrentUser => ({ id: u.id, name: u.name, email: u.email, role: u.role, tenantId: u.tenantId });
+    const identity = (u: typeof adminA): CurrentUser => ({ id: u.id, name: u.name, email: u.email, role: u.role, tenantId: u.tenantId, tenantName:null });
     const actorA = identity(adminA);
     const actorB = identity(adminB);
 
