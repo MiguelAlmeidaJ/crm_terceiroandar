@@ -231,7 +231,7 @@ export class MarketingService {
  }
  async update(user:CurrentUser,id:string,input:unknown){
   this.manager(user);
-  const body=this.input(input,['name','description','channel','status','budget','spent','startDate','endDate'],true);
+  const body=this.input(input,['name','description','channel','status','budget','spent','startDate','endDate','captureEnabled'],true);
   const existing=await this.prisma.marketingCampaign.findFirst({where:{id,tenantId:tenantId(user)}});
   if(!existing)throw new NotFoundException('Campanha não encontrada');
   const data=this.data(body);
