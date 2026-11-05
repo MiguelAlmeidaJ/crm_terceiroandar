@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { PrismaService } from '../infra/prisma/prisma.service';
 
-export type CurrentUser = { id: string; name: string; email: string; role: string };
+export type CurrentUser = { id: string; name: string; email: string; role: string; tenantId: string | null };
 export type AuthRequest = Request & { user?: CurrentUser };
 
 @Injectable()
@@ -20,10 +20,10 @@ export class AuthGuard implements CanActivate {
       if (!payload.sub) throw new UnauthorizedException();
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, name: true, email: true, role: true, active: true, sessionVersion: true },
+        select: { id: true, name: true, email: true, role: true, active: true, sessionVersion: true, tenantId: true, tenant: { select: { active: true } } },
       });
-      if (!user || !user.active || payload.ver !== user.sessionVersion) throw new UnauthorizedException();
-      request.user = { id: user.id, name: user.name, email: user.email, role: user.role };
+      if (!user || !user.active || (user.tenantId && !user.tenant?.active) || payload.ver !== user.sessionVersion) throw new UnauthorizedException();
+      request.user = { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId };
       return true;
     } catch {
       throw new UnauthorizedException('Sessão inválida ou expirada');

@@ -5,7 +5,7 @@ import { AuthRequest } from '../auth/auth.guard';
 export class AdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<AuthRequest>();
-    if (req.user?.role !== 'ADMIN') throw new ForbiddenException('Acesso restrito ao administrador');
+    if (req.user?.role !== 'ADMIN' || !req.user.tenantId) throw new ForbiddenException('Acesso restrito ao administrador');
     if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
       const origin = req.headers.origin;
       const allowed = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map(s => s.trim());

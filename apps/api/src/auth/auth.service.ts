@@ -51,7 +51,7 @@ export class AuthService {
     return this.jwt.signAsync({ sub: user.id, ver: user.sessionVersion + 1 }, { secret, expiresIn: '8h' });
   }
 
-  toPublicUser(user: { id: string; name: string; email: string; role: string }) {
-    return { id: user.id, name: user.name, email: user.email, role: user.role };
+  toPublicUser(user: { id: string; name: string; email: string; role: string; tenantId: string | null }) {
+    return { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId };
   }
 }
