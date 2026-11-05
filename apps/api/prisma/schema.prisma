@@ -38,8 +38,6 @@ model User {
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
   authoredActivities OpportunityActivity[] @relation("ActivityAuthor")
   contactInteractions ContactInteraction[]
-  campaigns MarketingCampaign[]
-  campaignContacts MarketingCampaignContact[]
   assignedTasks CommercialTask[] @relation("TaskAssignee")
   createdTasks CommercialTask[] @relation("TaskCreator")
 
@@ -112,7 +110,6 @@ model Opportunity {
   updatedAt    DateTime         @updatedAt @map("updated_at")
   activities   OpportunityActivity[]
   tasks        CommercialTask[]
-  campaigns MarketingCampaign[]
 
   @@index([stage])
   @@index([contactId])
@@ -188,6 +185,8 @@ model Tenant {
   updatedAt DateTime @updatedAt @map("updated_at")
   users User[]
   contacts Contact[]
+  marketingCampaigns MarketingCampaign[]
+  marketingCampaignContacts MarketingCampaignContact[]
   contactInteractions ContactInteraction[]
   opportunities Opportunity[]
   activities OpportunityActivity[]
